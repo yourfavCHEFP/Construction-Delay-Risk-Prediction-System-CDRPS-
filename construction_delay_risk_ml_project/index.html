@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Construction Delay Prediction System - Functional Specification</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    /* ------------------------------
+       BASE CLEAN THEME
+    ------------------------------ */
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+      color: #222;
+      transition: background 0.4s ease, color 0.4s ease;
+    }
+
+    .container {
+      max-width: 950px;
+      margin: 40px auto;
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+      animation: fadeIn 1.2s ease-in-out;
+      transition: background 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1, h2, h3 {
+      color: #222;
+      margin-bottom: 10px;
+      letter-spacing: 0.3px;
+      transition: color 0.4s ease;
+    }
+
+    h1 {
+      font-size: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .meta {
+      color: #555;
+      font-size: 0.9rem;
+      margin-bottom: 25px;
+      transition: color 0.4s ease;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: #e8f0ff;
+      color: #004aad;
+      font-size: 0.8rem;
+      margin-right: 8px;
+      border: 1px solid #c7d7f5;
+      transition: background 0.4s ease, color 0.4s ease;
+    }
+
+    .section {
+      margin-bottom: 35px;
+      animation: fadeIn 1.4s ease-in-out;
+    }
+
+    ul {
+      margin-left: 20px;
+      line-height: 1.7;
+    }
+
+    code {
+      background: #f0f0f0;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      border: 1px solid #ddd;
+      transition: background 0.4s ease, border-color 0.4s ease;
+    }
+
+    .icon {
+      font-size: 1.3rem;
+      margin-right: 6px;
+      color: #0057b8;
+      transition: color 0.4s ease;
+    }
+
+    /* ------------------------------
+       DARK MODE
+    ------------------------------ */
+    body.dark {
+      background: #1a1a1a;
+      color: #eaeaea;
+    }
+
+    body.dark .container {
+      background: #2a2a2a;
+    }
+
+    body.dark h1, 
+    body.dark h2, 
+    body.dark h3 {
+      color: #ffffff;
+    }
+
+    body.dark .meta {
+      color: #cccccc;
+    }
+
+    body.dark .tag {
+      background: #333;
+      color: #9fc9ff;
+      border-color: #555;
+    }
+
+    body.dark code {
+      background: #333;
+      border-color: #555;
+    }
+
+    body.dark .icon {
+      color: #9fc9ff;
+    }
+
+    /* ------------------------------
+       DARK MODE TOGGLE SWITCH
+    ------------------------------ */
+    .toggle-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .toggle-label {
+      font-size: 0.9rem;
+      color: #222;
+      transition: color 0.4s ease;
+    }
+
+    body.dark .toggle-label {
+      color: #eaeaea;
+    }
+
+    .toggle-switch {
+      width: 55px;
+      height: 28px;
+      background: #ccc;
+      border-radius: 20px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.4s ease;
+    }
+
+    .toggle-switch::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.4s ease;
+    }
+
+    body.dark .toggle-switch {
+      background: #555;
+    }
+
+    body.dark .toggle-switch::before {
+      transform: translateX(27px);
+      background: #9fc9ff;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Dark Mode Toggle -->
+  <div class="toggle-container">
+    <span class="toggle-label">Dark Mode</span>
+    <div class="toggle-switch" onclick="toggleDarkMode()"></div>
+  </div>
+
+  <div class="container">
+
+    <h1>🏗️ AI Construction Delay Prediction System</h1>
+
+    <div class="meta">
+      <span class="tag">Functional Specification</span>
+      <span>Author: Olumide [CHEF_P]</span> ·
+      <span>Date: 07 June 2026</span>
+    </div>
+
+    <!-- 1. Project Overview -->
+    <div class="section">
+      <h2>1. Project Overview</h2>
+      <p>
+        This system applies machine learning techniques to predict the probability of schedule delays in civil engineering projects. 
+        The model analyzes historical construction data, material delivery logs, contractor performance records, and environmental 
+        factors such as rainfall intensity and temperature variations. The system outputs a delay‑risk score and provides interpretable 
+        insights to support proactive project planning and resource allocation. 
+      </p>
+      <p><strong>Definition of Delay:</strong> For this project, a construction activity or project is considered "delayed" if the actual completion date exceeds the planned completion date by more than 10% of the planned duration (e.g., a 100‑day project delayed by >10 days). This threshold can be adjusted based on domain expert input.</p>
+      <p>The model is trained on historical labeled data where each project is tagged as "delayed" or "on‑time" based on the defined delay threshold.</p>
+    </div>
+
+    <!-- 2. Objectives -->
+    <div class="section">
+      <h2>2. Objectives</h2>
+      <ul>
+        <li>Predict the likelihood of schedule delay before and during project execution.</li>
+        <li>Identify the most influential factors affecting project timelines.</li>
+        <li>Provide a numerical risk score (0–100) and a categorical rating (Low, Moderate, High).</li>
+        <li>Offer an interactive dashboard for project teams.</li>
+        <li>Enable export of predictions and reports for documentation and compliance.</li>
+      </ul>
+    </div>
+
+    <!-- 3. Users and Roles -->
+    <div class="section">
+      <h2>3. Users and Roles</h2>
+      <ul>
+        <li><strong>Project Manager:</strong> Reviews delay predictions and monitors risk levels.</li>
+        <li><strong>Site Engineer:</strong> Inputs updated field data such as progress and equipment status.</li>
+        <li><strong>Data Analyst:</strong> Manages dataset quality and retrains the model.</li>
+        <li><strong>Executive Stakeholder:</strong> Views high‑level summaries and portfolio risk distribution.</li>
+      </ul>
+    </div>
+
+    <!-- 4. Functional Requirements -->
+    <div class="section">
+      <h2>4. Functional Requirements</h2>
+
+      <h3><span class="icon">📥</span>4.1 Data Input</h3>
+      <ul>
+        <li>System shall accept CSV or Excel uploads containing project attributes.</li>
+        <li>System shall validate required fields such as <code>project_id</code>, <code>planned_duration</code>, <code>actual_progress</code>, <code>rainfall_mm</code>, <code>material_delivery_delay_days</code>.</li>
+        <li>System shall notify users of missing or inconsistent data.</li>
+      </ul>
+
+      <h3><span class="icon">🤖</span>4.2 Model Prediction</h3>
+      <ul>
+        <li>System shall generate a delay‑risk score between <strong>0 and 100</strong>.</li>
+        <li>System shall classify risk as Low (0–30), Moderate (31–70), or High (71–100).</li>
+        <li>System shall highlight top contributing factors using feature importance or SHAP values.</li>
+        <li>System shall provide confidence levels based on model performance.</li>
+      </ul>
+
+      <h3><span class="icon">📊</span>4.3 Reporting</h3>
+      <ul>
+        <li>System shall display predictions in a sortable, filterable table.</li>
+        <li>System shall generate visual charts (risk distribution, factor impact).</li>
+        <li>System shall allow export of results as CSV or PDF.</li>
+        <li>System shall allow users to download a summary report for each project.</li>
+      </ul>
+    </div>
+
+    <h2> Data Ingestion Module</h2>
+
+<p>
+The Data Ingestion Module is responsible for accepting, validating, and loading project datasets into the system. It ensures that only supported file formats are processed and that the dataset is structurally suitable for downstream validation and preparation tasks.
+</p>
+
+<h3> Supported File Formats</h3>
+
+<p>The system shall accept project data files in the following formats:</p>
+
+<ul>
+  <li>CSV (.csv)</li>
+  <li>Excel (.xlsx, .xls)</li>
+</ul>
+
+<p>Any other file format shall be rejected with a clear, human-readable error message.</p>
+
+<h3> File Validation Requirements</h3>
+
+<p>Before loading any dataset, the system shall perform the following validation checks:</p>
+
+<h4> File Existence Check</h4>
+<p>
+If the file path does not point to an existing file, the system shall display:<br>
+<strong>“File not found at path: &lt;path&gt;. Please provide a valid file location.”</strong>
+</p>
+
+<h4> File Extension Check</h4>
+<p>
+If the file extension is not .csv, .xlsx, or .xls, the system shall display:<br>
+<strong>“Unsupported file format. Please upload a CSV or Excel file.”</strong>
+</p>
+
+<h4> File Extension Check</h4>
+<p>
+If the file exists but contains no data, the system shall display:<br>
+<strong>“The uploaded file is empty. Please upload a file containing project data.”</strong>
+</p>
+
+<h4> Zero-Row Check</h4>
+<p>
+If the file loads successfully but contains zero rows, the system shall display:<br>
+<strong>“The file was loaded but contains no rows. Please verify the dataset.”</strong>
+</p>
+
+<h3> Data Loading Requirements</h3>
+
+<ul>
+  <li>The system shall load the file into a structured DataFrame-like object.</li>
+  <li>The system shall not expose raw error traces to the user.</li>
+  <li>The system shall return clean, structured error messages for any failure.</li>
+</ul>
+
+<h3> Data Preview Requirements</h3>
+
+<p>The system shall provide a preview function that:</p>
+
+<ul>
+  <li>Returns the first <strong>N</strong> rows of the dataset (default = 5).</li>
+  <li>Allows the user to specify a custom number of rows.</li>
+  <li>Returns an empty structure with a message if the dataset contains no rows.</li>
+</ul>
+
+<h3> Integration With Validation Module</h3>
+
+<p>
+After successful ingestion, the loaded dataset shall be passed to the Schema Validation Module. The ingestion module itself does not check for missing or inconsistent values; instead, it ensures the dataset is correctly loaded so that validation can proceed.
+</p>
+
+<p>
+This supports the functional requirement:<br>
+<strong>“The system shall notify users of missing or inconsistent data.”</strong>
+</p>
+
+<h3> Mapping to Functional Requirements</h3>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>Functional Requirement</th>
+    <th>Ingestion Component</th>
+  </tr>
+  <tr>
+    <td>System shall accept CSV or Excel uploads</td>
+    <td>File extension validation + file loading</td>
+  </tr>
+  <tr>
+    <td>System shall notify users of missing or inconsistent data</td>
+    <td>Enabled by ingestion; executed in validation module</td>
+  </tr>
+  <tr>
+    <td>System shall provide a preview of uploaded data</td>
+    <td>Preview function</td>
+  </tr>
+  <tr>
+    <td>System shall reject invalid or empty files</td>
+    <td>Existence, extension, and empty checks</td>
+  </tr>
+</table>
+
+
+<h2> Data Validation Module</h2>
+
+<p>
+The Data Validation Module ensures that the uploaded dataset contains all required fields, adheres to expected structural rules, and does not contain missing or inconsistent values that would compromise downstream processing.
+</p>
+
+<h3> Required Column Validation</h3>
+
+<p>
+The system shall verify that all mandatory fields are present in the dataset. If any required column is missing, the system shall display:
+</p>
+
+<p><strong>“The dataset is missing required fields: &lt;list_of_missing_columns&gt;.”</strong></p>
+
+<p>
+The validation process shall not proceed until all required fields are present.
+</p>
+
+<h3> Missing Value Detection</h3>
+
+<p>
+The system shall analyze the dataset for missing values and produce a summary indicating:
+</p>
+
+<ul>
+  <li>Columns containing missing values</li>
+  <li>The number of missing entries per column</li>
+</ul>
+
+<p>
+If missing values are detected, the system shall notify the user with a structured message summarizing the findings.
+</p>
+
+<h3> Inconsistency Detection</h3>
+
+<p>
+The system shall detect basic inconsistencies such as:
+</p>
+
+<ul>
+  <li>Negative values in fields that must be non-negative</li>
+  <li>Invalid ranges (e.g., planned duration ≤ 0)</li>
+  <li>Impossible values (e.g., rainfall &lt; 0)</li>
+</ul>
+
+<p>
+Any inconsistencies shall be reported in a structured format for user review.
+</p>
+
+<h3> Validation Output Structure</h3>
+
+<p>
+The validation module shall return a structured object containing:
+</p>
+
+<ul>
+  <li>List of missing required columns</li>
+  <li>Summary of missing values per column</li>
+  <li>List of detected inconsistencies</li>
+</ul>
+
+<p>
+This output shall be used by the Data Preparation Module to determine the appropriate cleaning strategy.
+</p>
+
+
+    <!-- 5. Non-functional Requirements -->
+    <div class="section">
+      <h2>5. Non‑Functional Requirements</h2>
+      <ul>
+        <li>Prediction response time should be under 2 seconds for up to 2,000 projects.</li>
+        <li>System should maintain 95% uptime for operational reliability.</li>
+        <li>The model should aim for an F1‑score in the range of 78–85% based on validation data, although final performance will depend on data quality, class balance, and feature availability.</li>
+        <li>System should ensure secure handling of project data using encryption.</li>
+        <li>Interface should be responsive and accessible across devices.</li>
+      </ul>
+    </div>
+
+    <!-- 6. Assumptions and Limitations -->
+    <div class="section">
+      <h2>6. Assumptions and Limitations</h2>
+      <ul>
+        <li>Uploaded datasets are assumed to be accurate and complete.</li>
+        <li>The training dataset is expected to contain between 1,000 and 10,000 historical project records. The proportion of delayed vs. non‑delayed projects may be imbalanced; if so, techniques such as class weighting or oversampling will be applied to ensure model robustness.</li>
+        <li>The model predicts schedule delays only, not cost overruns or safety risks.</li>
+        <li>Weather predictions rely on historical averages and may not reflect extreme anomalies.</li>
+        <li>Model performance depends on the quality and quantity of available training data.</li>
+        <li>The system supports decision‑making but does not replace expert judgment.</li>
+      </ul>
+    </div>
+
+    <!-- 7. Required Dataset Fields -->
+    <div class="section">
+      <h2>7. Required Dataset Fields</h2>
+
+<p>
+The system requires a predefined set of fields to ensure proper ingestion, validation, preparation, and machine learning processing. All fields listed below are mandatory and must be present in the uploaded dataset. Missing fields shall trigger a validation error.
+</p>
+
+<h3> Core Project Identification</h3>
+<ul>
+  <li>project_id</li>
+</ul>
+
+<h3> Schedule and Duration Fields</h3>
+<ul>
+  <li>planned_duration</li>
+  <li>actual_duration</li>
+  <li>actual_progress</li>
+</ul>
+
+<h3> Delay-Related Factors</h3>
+<ul>
+  <li>material_delivery_delay_days</li>
+  <li>equipment_delay_days</li>
+  <li>labor_shortage_days</li>
+</ul>
+
+<h3> Weather and Environmental Factors</h3>
+<ul>
+  <li>rainfall_mm</li>
+  <li>temperature_celsius</li>
+  <li>humidity_percent</li>
+</ul>
+
+<h3> Contractor and Management Factors</h3>
+<ul>
+  <li>contractor_experience_years</li>
+  <li>contractor_performance_score</li>
+  <li>site_management_quality</li>
+</ul>
+
+<h3> Financial and Resource Factors</h3>
+<ul>
+  <li>budget_variance_percent</li>
+  <li>resource_availability_score</li>
+</ul>
+
+<h3> Target Variable</h3>
+<ul>
+  <li>delay_risk</li>
+</ul>
+
+<p>
+All fields listed above are required for the system to perform ingestion, validation, preparation, and predictive modeling. The absence of any required field shall prevent further processing until corrected.
+</p>
+
+
+
+
+<h2> Data Dictionary</h2>
+
+<p>
+The Data Dictionary defines all required dataset fields, their descriptions, data types, and expected value ranges. These definitions ensure consistency across ingestion, validation, preparation, and machine learning processes.
+</p>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>Field Name</th>
+    <th>Description</th>
+    <th>Data Type</th>
+    <th>Expected Values / Constraints</th>
+  </tr>
+
+  <tr>
+    <td>project_id</td>
+    <td>Unique identifier for each construction project.</td>
+    <td>String / Integer</td>
+    <td>Must be unique; cannot be null.</td>
+  </tr>
+
+  <tr>
+    <td>planned_duration</td>
+    <td>Total planned duration of the project.</td>
+    <td>Integer</td>
+    <td>Must be > 0.</td>
+  </tr>
+
+  <tr>
+    <td>actual_duration</td>
+    <td>Total actual duration recorded for the project.</td>
+    <td>Integer</td>
+    <td>Must be > 0.</td>
+  </tr>
+
+  <tr>
+    <td>actual_progress</td>
+    <td>Percentage of project completion at the time of reporting.</td>
+    <td>Float</td>
+    <td>Range: 0–100.</td>
+  </tr>
+
+  <tr>
+    <td>material_delivery_delay_days</td>
+    <td>Number of days delayed due to material delivery issues.</td>
+    <td>Integer</td>
+    <td>Must be ≥ 0.</td>
+  </tr>
+
+  <tr>
+    <td>equipment_delay_days</td>
+    <td>Number of days delayed due to equipment unavailability or breakdown.</td>
+    <td>Integer</td>
+    <td>Must be ≥ 0.</td>
+  </tr>
+
+  <tr>
+    <td>labor_shortage_days</td>
+    <td>Number of days delayed due to labor shortages.</td>
+    <td>Integer</td>
+    <td>Must be ≥ 0.</td>
+  </tr>
+
+  <tr>
+    <td>rainfall_mm</td>
+    <td>Total rainfall (in millimeters) affecting the project timeline.</td>
+    <td>Float</td>
+    <td>Must be ≥ 0.</td>
+  </tr>
+
+  <tr>
+    <td>temperature_celsius</td>
+    <td>Average temperature recorded during the project period.</td>
+    <td>Float</td>
+    <td>Typical range: -10 to 50.</td>
+  </tr>
+
+  <tr>
+    <td>humidity_percent</td>
+    <td>Average humidity percentage during the project period.</td>
+    <td>Float</td>
+    <td>Range: 0–100.</td>
+  </tr>
+
+  <tr>
+    <td>contractor_experience_years</td>
+    <td>Years of experience of the contractor handling the project.</td>
+    <td>Integer</td>
+    <td>Must be ≥ 0.</td>
+  </tr>
+
+  <tr>
+    <td>contractor_performance_score</td>
+    <td>Performance rating of the contractor based on past projects.</td>
+    <td>Float</td>
+    <td>Range: 0–10.</td>
+  </tr>
+
+  <tr>
+    <td>site_management_quality</td>
+    <td>Quality rating of site management practices.</td>
+    <td>Integer</td>
+    <td>Range: 1–5.</td>
+  </tr>
+
+  <tr>
+    <td>budget_variance_percent</td>
+    <td>Percentage deviation from the planned budget.</td>
+    <td>Float</td>
+    <td>Can be negative or positive.</td>
+  </tr>
+
+  <tr>
+    <td>resource_availability_score</td>
+    <td>Score representing availability of required resources.</td>
+    <td>Integer</td>
+    <td>Range: 1–5.</td>
+  </tr>
+
+  <tr>
+    <td>delay_risk</td>
+    <td>Target variable indicating whether the project experienced delay.</td>
+    <td>Integer (0 or 1)</td>
+    <td>0 = No Delay, 1 = Delay.</td>
+  </tr>
+
+</table>
+
+
+
+
+<h2> Use Case Descriptions</h2>
+
+<p>
+This section describes the primary interactions between the user and the Construction Delay Risk Prediction System. Each use case outlines the actor, preconditions, main flow, and expected outcomes.
+</p>
+
+<h3> Use Case: Upload Dataset</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>Use Case ID</th>
+    <td>UC-01</td>
+  </tr>
+  <tr>
+    <th>Actor</th>
+    <td>User (Project Manager / Analyst)</td>
+  </tr>
+  <tr>
+    <th>Preconditions</th>
+    <td>User has a dataset in CSV or Excel format.</td>
+  </tr>
+  <tr>
+    <th>Main Flow</th>
+    <td>
+      <ol>
+        <li>User selects a dataset file.</li>
+        <li>System validates file format and existence.</li>
+        <li>System loads the dataset into memory.</li>
+        <li>System displays a preview of the first 5 rows.</li>
+      </ol>
+    </td>
+  </tr>
+  <tr>
+    <th>Postconditions</th>
+    <td>Dataset is successfully loaded and ready for validation.</td>
+  </tr>
+</table>
+
+<h3> Use Case: Validate Dataset</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>Use Case ID</th>
+    <td>UC-02</td>
+  </tr>
+  <tr>
+    <th>Actor</th>
+    <td>System</td>
+  </tr>
+  <tr>
+    <th>Preconditions</th>
+    <td>Dataset has been successfully ingested.</td>
+  </tr>
+  <tr>
+    <th>Main Flow</th>
+    <td>
+      <ol>
+        <li>System checks for required fields.</li>
+        <li>System identifies missing values.</li>
+        <li>System detects inconsistent or invalid values.</li>
+        <li>System generates a validation report.</li>
+      </ol>
+    </td>
+  </tr>
+  <tr>
+    <th>Postconditions</th>
+    <td>Validation results are available for review.</td>
+  </tr>
+</table>
+
+<h3> Use Case: Prepare Data</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>Use Case ID</th>
+    <td>UC-03</td>
+  </tr>
+  <tr>
+    <th>Actor</th>
+    <td>System</td>
+  </tr>
+  <tr>
+    <th>Preconditions</th>
+    <td>Dataset has passed validation checks.</td>
+  </tr>
+  <tr>
+    <th>Main Flow</th>
+    <td>
+      <ol>
+        <li>System cleans and corrects data types.</li>
+        <li>System handles missing values.</li>
+        <li>System encodes categorical variables.</li>
+        <li>System scales numerical features.</li>
+        <li>System splits data into training, validation, and test sets.</li>
+      </ol>
+    </td>
+  </tr>
+  <tr>
+    <th>Postconditions</th>
+    <td>Dataset is ready for machine learning model training.</td>
+  </tr>
+</table>
+
+<h3> Use Case: Train Model</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>Use Case ID</th>
+    <td>UC-04</td>
+  </tr>
+  <tr>
+    <th>Actor</th>
+    <td>System</td>
+  </tr>
+  <tr>
+    <th>Preconditions</th>
+    <td>Prepared dataset is available.</td>
+  </tr>
+  <tr>
+    <th>Main Flow</th>
+    <td>
+      <ol>
+        <li>System trains multiple machine learning models.</li>
+        <li>System evaluates each model using validation metrics.</li>
+        <li>System selects the best-performing model.</li>
+        <li>System saves the selected model for deployment.</li>
+      </ol>
+    </td>
+  </tr>
+  <tr>
+    <th>Postconditions</th>
+    <td>Best-performing model is stored and ready for inference.</td>
+  </tr>
+</table>
+
+<h3> Use Case: Predict Delay Risk</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>Use Case ID</th>
+    <td>UC-05</td>
+  </tr>
+  <tr>
+    <th>Actor</th>
+    <td>User</td>
+  </tr>
+  <tr>
+    <th>Preconditions</th>
+    <td>Trained model is available.</td>
+  </tr>
+  <tr>
+    <th>Main Flow</th>
+    <td>
+      <ol>
+        <li>User submits project attributes.</li>
+        <li>System preprocesses the input using saved encoders and scalers.</li>
+        <li>System generates a delay risk prediction.</li>
+        <li>System displays prediction and explanation (SHAP values).</li>
+      </ol>
+    </td>
+  </tr>
+  <tr>
+    <th>Postconditions</th>
+    <td>User receives a delay risk prediction and explanation.</td>
+  </tr>
+</table>
+
+
+
+<h2> User Stories</h2>
+
+<p>
+The following user stories define the functional expectations of the system from the perspective of the end user. Each story follows the standard format: <em>As a [user], I want [feature], so that [benefit].</em>
+</p>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>User Story ID</th>
+    <th>As a...</th>
+    <th>I want...</th>
+    <th>So that...</th>
+  </tr>
+
+  <tr>
+    <td>US-01</td>
+    <td>Project Manager</td>
+    <td>to upload a dataset in CSV or Excel format</td>
+    <td>I can analyze project delay risks</td>
+  </tr>
+
+  <tr>
+    <td>US-02</td>
+    <td>Project Manager</td>
+    <td>to preview the uploaded dataset</td>
+    <td>I can confirm the correct file was selected</td>
+  </tr>
+
+  <tr>
+    <td>US-03</td>
+    <td>System</td>
+    <td>to validate required fields in the dataset</td>
+    <td>processing does not continue with incomplete data</td>
+  </tr>
+
+  <tr>
+    <td>US-04</td>
+    <td>System</td>
+    <td>to detect missing values and inconsistencies</td>
+    <td>I can notify the user of data quality issues</td>
+  </tr>
+
+  <tr>
+    <td>US-05</td>
+    <td>Data Analyst</td>
+    <td>to clean and preprocess the dataset</td>
+    <td>the data becomes suitable for machine learning</td>
+  </tr>
+
+  <tr>
+    <td>US-06</td>
+    <td>Data Analyst</td>
+    <td>to encode categorical variables</td>
+    <td>the model can interpret non-numeric fields</td>
+  </tr>
+
+  <tr>
+    <td>US-07</td>
+    <td>Data Analyst</td>
+    <td>to scale numerical features</td>
+    <td>the model performs consistently across feature ranges</td>
+  </tr>
+
+  <tr>
+    <td>US-08</td>
+    <td>System</td>
+    <td>to split the dataset into training, validation, and test sets</td>
+    <td>model performance can be evaluated accurately</td>
+  </tr>
+
+  <tr>
+    <td>US-09</td>
+    <td>Machine Learning Engineer</td>
+    <td>to train multiple models</td>
+    <td>I can select the best-performing one</td>
+  </tr>
+
+  <tr>
+    <td>US-10</td>
+    <td>Machine Learning Engineer</td>
+    <td>to evaluate models using standard metrics</td>
+    <td>I can compare their performance objectively</td>
+  </tr>
+
+  <tr>
+    <td>US-11</td>
+    <td>System</td>
+    <td>to save the best-performing model</td>
+    <td>it can be used for predictions later</td>
+  </tr>
+
+  <tr>
+    <td>US-12</td>
+    <td>End User</td>
+    <td>to input project attributes</td>
+    <td>I can receive a delay risk prediction</td>
+  </tr>
+
+  <tr>
+    <td>US-13</td>
+    <td>End User</td>
+    <td>to view explanation of the prediction</td>
+    <td>I can understand why the model made that decision</td>
+  </tr>
+
+</table>
+
+
+
+<h2> System Flow Description</h2>
+
+<p>
+This section describes the end-to-end flow of data and operations within the Construction Delay Risk Prediction System. The flow outlines how user inputs and datasets move through the system’s modules to produce predictions and insights.
+</p>
+
+<h3> High-Level System Flow</h3>
+
+<ol>
+  <li><strong>Dataset Upload:</strong> User uploads a CSV or Excel file containing project data.</li>
+  <li><strong>Data Ingestion:</strong> System validates file format, existence, and structure, then loads the dataset.</li>
+  <li><strong>Data Validation:</strong> System checks for required fields, missing values, and inconsistencies.</li>
+  <li><strong>Data Preparation:</strong> System cleans, encodes, scales, and splits the dataset.</li>
+  <li><strong>Model Training:</strong> System trains multiple machine learning models and selects the best performer.</li>
+  <li><strong>Model Evaluation:</strong> System computes evaluation metrics and stores results.</li>
+  <li><strong>Model Deployment:</strong> The selected model is saved and made available for predictions.</li>
+  <li><strong>Prediction:</strong> User submits project attributes; system preprocesses inputs and generates a delay risk prediction.</li>
+  <li><strong>Explainability:</strong> System generates SHAP-based explanations for the prediction.</li>
+</ol>
+
+<h3> System Flow Diagram (Textual Representation)</h3>
+
+<pre>
+[User Uploads File]
+          |
+          v
+[Data Ingestion Module]
+          |
+          v
+[Data Validation Module]
+          |
+          v
+[Data Preparation Module]
+          |
+          v
+[Machine Learning Module]
+          |
+          v
+[Model Selection & Saving]
+          |
+          v
+[Prediction Interface]
+          |
+          v
+[Delay Risk Output + SHAP Explanation]
+</pre>
+
+<p>
+This flow ensures that data moves through a structured and reliable pipeline, enabling accurate and explainable delay risk predictions.
+</p>
+
+
+
+
+
+<h2> Sequence Diagrams (Textual Representation)</h2>
+
+<p>
+This section provides textual sequence diagrams describing the interactions between system components during key operations. These diagrams illustrate the order of messages exchanged between modules.
+</p>
+
+<h3> Sequence: Dataset Upload and Ingestion</h3>
+
+<pre>
+User → UI: Select dataset file
+UI → Ingestion Module: Send file path
+Ingestion Module → File System: Verify file existence
+File System → Ingestion Module: File exists
+Ingestion Module → Ingestion Module: Validate file extension
+Ingestion Module → Ingestion Module: Load dataset into memory
+Ingestion Module → UI: Return dataset preview
+</pre>
+
+<h3> Sequence: Dataset Validation</h3>
+
+<pre>
+UI → Validation Module: Request dataset validation
+Validation Module → Dataset: Check required fields
+Validation Module → Dataset: Scan for missing values
+Validation Module → Dataset: Detect inconsistencies
+Validation Module → UI: Return validation report
+</pre>
+
+<h3> Sequence: Data Preparation</h3>
+
+<pre>
+UI → Preparation Module: Start data preparation
+Preparation Module → Cleaning Component: Fix data types
+Cleaning Component → Cleaning Component: Handle missing values
+Cleaning Component → Encoding Component: Encode categorical fields
+Encoding Component → Scaling Component: Scale numerical fields
+Scaling Component → Splitter Component: Split dataset
+Splitter Component → UI: Return prepared datasets
+</pre>
+
+<h3> Sequence: Model Training</h3>
+
+<pre>
+UI → ML Module: Start training
+ML Module → Training Engine: Train multiple models
+Training Engine → Evaluation Engine: Evaluate models
+Evaluation Engine → ML Module: Return metrics
+ML Module → Model Storage: Save best model
+ML Module → UI: Return training summary
+</pre>
+
+<h3> Sequence: Delay Risk Prediction</h3>
+
+<pre>
+User → UI: Submit project attributes
+UI → ML Module: Send input data
+ML Module → Preparation Module: Apply encoders and scalers
+Preparation Module → ML Module: Return transformed input
+ML Module → Model: Generate prediction
+Model → Explainability Engine: Compute SHAP values
+Explainability Engine → ML Module: Return explanation
+ML Module → UI: Return prediction + explanation
+</pre>
+
+<p>
+These sequences illustrate how system components collaborate to process data, train models, and generate predictions.
+</p>
+    </div>
+  </div>
+
+  <script>
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,34 @@
+### 1. Full Python library list for this project
+
+**Core data & ML**
+
+- **pandas** — dataframes, CSV/Excel handling  
+- **numpy** — numerical operations  
+- **scikit‑learn** — modeling, preprocessing, metrics, train/test split  
+- **joblib** — saving/loading trained models  
+
+**Visualization & explainability**
+
+- **matplotlib** — basic plots  
+- **seaborn** — nicer statistical plots  
+- **shap** — explainability (SHAP values)  
+
+**Web / app layer (for later sprints)**
+
+- **fastapi** or **flask** — API for predictions  
+- **uvicorn** — ASGI server (if using FastAPI)  
+
+**Utilities / quality**
+
+- **python‑dotenv** — environment variables  
+- **pytest** — tests  
+- **black** — code formatting  
+- **isort** — import sorting 
+
+
+
+
+#### Step 3 — Define the required columns list
+
+
+
