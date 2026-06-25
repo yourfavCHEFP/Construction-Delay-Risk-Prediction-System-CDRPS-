@@ -3,6 +3,7 @@ pandas
 scikit-learn
 plotly
 streamlit
+chardet
 joblib
 matplotlib
 seaborn

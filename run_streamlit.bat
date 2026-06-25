@@ -10,6 +10,6 @@ echo Open your browser at: http://localhost:8501
 echo Press Ctrl+C to stop the server.
 echo.
 
-".venv\Scripts\python.exe" -m streamlit run "CDRPS\notebooks\app.py"
+".venv\Scripts\python.exe" -m streamlit run "app.py"
 
 pause
