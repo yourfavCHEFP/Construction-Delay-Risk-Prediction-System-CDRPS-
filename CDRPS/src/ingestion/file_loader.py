@@ -1,34 +1,63 @@
-# This file will handle:
+"""
+Ingestion Module — file_loader.py
 
-# - Uploading CSV/Excel  
-# - Validating file format 
-# - Loading data into a DataFrame 
-# - Previewing first rows  
+Responsibilities:
+- Validate file extensions (.csv, .xlsx, .xls)
+- Load CSV or Excel files safely
+- Handle encoding issues gracefully
+- Provide a clean preview of the dataset (returned, not printed)
+- Never expose raw stack traces to the user
+"""
 
-# - Responsibility 1: Accept a file path from the user (CSV or Excel)  
-# - Responsibility 2: Check that the file extension is one of: `.csv`, `.xlsx`, `.xls`  
-# - Responsibility 3: If extension is invalid → raise a clear, human‑readable error message  
-# - Responsibility 4: If valid → load the file into a pandas DataFrame  
-# - Responsibility 5: Provide a way to preview the first N rows (default 5)  
-# - Responsibility 6: Never print raw stack traces to the user—only clean messages  
-
-
+import os
 import pandas as pd
 
-# 3. validate_file_extension(path: str)
+
+# 1. validate_file_extension(path: str)
 def validate_file_extension(path: str):
-    """Validate the file extension."""
-    if not (path.endswith('.csv') or path.endswith('.xlsx')):
-        raise ValueError("Unsupported file format. Please upload a CSV or Excel file.")
-    
-#load file
+    """Validate that the file has a supported extension."""
+    allowed_extensions = (".csv", ".xlsx", ".xls")
+    if not path.lower().endswith(allowed_extensions):
+        raise ValueError(
+            "Unsupported file format. Please upload a CSV or Excel file (.csv, .xlsx, .xls)."
+        )
+
+
+# 2. load_file(path: str) -> pd.DataFrame
 def load_file(path: str) -> pd.DataFrame:
-    """Load the dataset from a CSV file after validating the file extension."""
+    """
+    Load a CSV or Excel dataset after validating the file extension.
+    Handles encoding issues and empty files gracefully.
+    """
+    # Check file extension
     validate_file_extension(path)
-    return pd.read_csv(path)
+
+    # Check file existence
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"File not found at path: {path}")
+
+    # Load CSV
+    if path.lower().endswith(".csv"):
+        try:
+            df = pd.read_csv(path)
+        except UnicodeDecodeError:
+            df = pd.read_csv(path, encoding="latin1")
+
+    # Load Excel
+    else:
+        df = pd.read_excel(path)
+
+    # Check for empty dataset
+    if df.empty:
+        raise ValueError("The uploaded file is empty. Please upload a file with data.")
+
+    return df
 
 
-# 2. preview_data(df: pd.DataFrame, n=5)
+# 3. preview_data(df: pd.DataFrame, n=5)
 def preview_data(df: pd.DataFrame, n=5):
-    """Preview the first n rows of the DataFrame."""
-    print(df.head(n))
+    """
+    Return the first n rows of the DataFrame.
+    (No printing — the notebook decides how to display it.)
+    """
+    return df.head(n)
