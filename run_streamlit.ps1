@@ -3,7 +3,7 @@
 
 $ROOT = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PYTHON = Join-Path $ROOT ".venv\Scripts\python.exe"
-$APP = Join-Path $ROOT "CDRPS\notebooks\app.py"
+$APP = Join-Path $ROOT "app.py"
 
 if (-not (Test-Path $PYTHON)) {
     Write-Error "Python interpreter not found at: $PYTHON"
