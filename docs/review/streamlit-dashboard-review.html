@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Your Code Review &mdash; Streamlit Dashboard (PR #1) | CDRPS</title>
+<style>
+  :root {
+    --bg: #0f141b;
+    --panel: #161d27;
+    --panel-2: #1b2430;
+    --border: #27313f;
+    --text: #e6edf3;
+    --muted: #9aa7b4;
+    --accent: #4f9cf9;
+    --accent-soft: rgba(79, 156, 249, 0.14);
+    --good: #3fb950;
+    --good-soft: rgba(63, 185, 80, 0.14);
+    --high: #f85149;
+    --med: #e3a008;
+    --low: #58a6ff;
+    --nit: #8b949e;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #1a2330 0%, var(--bg) 55%);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  header.page {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 26px 28px;
+    box-shadow: var(--shadow);
+  }
+  header.page h1 { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -0.01em; }
+  header.page .sub { color: var(--muted); margin: 0 0 16px; font-size: 0.98rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge {
+    font-size: 0.78rem; padding: 4px 10px; border-radius: 999px;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .badge code { color: var(--accent); background: none; padding: 0; }
+  .badge strong { color: var(--text); font-weight: 600; }
+
+  .intro {
+    margin-top: 18px; padding: 16px 18px; border-radius: var(--radius);
+    background: var(--accent-soft); border: 1px solid rgba(79,156,249,0.3);
+    font-size: 0.99rem;
+  }
+  .intro b { color: var(--text); }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 8px; }
+  .stat {
+    flex: 1 1 150px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+  }
+  .stat .n { font-size: 1.5rem; font-weight: 700; }
+  .stat .l { color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat.good .n { color: var(--good); }
+  .stat.improve .n { color: var(--accent); }
+
+  nav.tabs {
+    display: flex; flex-wrap: wrap; gap: 6px; margin: 26px 0 18px;
+    border-bottom: 1px solid var(--border); padding-bottom: 10px;
+  }
+  .tab-btn {
+    background: var(--panel); color: var(--muted); border: 1px solid var(--border);
+    padding: 9px 16px; border-radius: 999px; cursor: pointer; font-size: 0.9rem;
+    transition: all 0.15s ease;
+  }
+  .tab-btn:hover { color: var(--text); border-color: var(--accent); }
+  .tab-btn.active { background: var(--accent); color: #07101d; border-color: var(--accent); font-weight: 600; }
+
+  .panel-section { display: none; }
+  .panel-section.active { display: block; animation: fade 0.2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .toolbar .spacer { flex: 1; }
+  .link-btn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.85rem; }
+  .link-btn:hover { text-decoration: underline; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
+  }
+  .card-head {
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer;
+    user-select: none;
+  }
+  .card-head:hover { background: var(--panel-2); }
+  .card-head .title { flex: 1; font-weight: 600; font-size: 1rem; }
+  .card-head .title .id { color: var(--muted); font-weight: 500; margin-right: 8px; font-size: 0.85rem; }
+  .chevron { color: var(--muted); transition: transform 0.18s ease; font-size: 0.8rem; }
+  .card.open .chevron { transform: rotate(90deg); }
+
+  .sev {
+    font-size: 0.72rem; padding: 3px 9px; border-radius: 999px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+  }
+  .sev.good { background: var(--good-soft); color: var(--good); border: 1px solid rgba(63,185,80,0.4); }
+
+  .card-body { display: none; padding: 4px 18px 18px; border-top: 1px solid var(--border); }
+  .card.open .card-body { display: block; }
+  .card-body p { margin: 12px 0; }
+  .card-body .label {
+    display: inline-block; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted); margin-bottom: 2px;
+  }
+  .fix {
+    margin-top: 12px; padding: 12px 14px; border-left: 3px solid var(--good);
+    background: var(--good-soft); border-radius: 0 8px 8px 0;
+  }
+  .fix .label { color: var(--good); }
+
+  code, pre {
+    font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+  }
+  code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; color: #d2a8ff; }
+  pre {
+    background: #0b0f15; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; overflow-x: auto; margin: 10px 0; color: #c9d1d9;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .file { color: var(--accent); }
+
+  footer.page {
+    margin-top: 36px; padding: 22px 24px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted);
+  }
+  footer.page b { color: var(--text); }
+  .section-lead { color: var(--muted); margin: 0 0 18px; }
+  h2.sec { font-size: 1.15rem; margin: 0 0 4px; }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <h1>🏗️ Hey &mdash; let's talk about your dashboard</h1>
+    <div class="badges">
+      <span class="badge"><strong>PR</strong>&nbsp; #1 &mdash; Feature/streamlit dashboard</span>
+      <span class="badge"><strong>Merge</strong>&nbsp; <code>e4b7f69</code></span>
+      <span class="badge"><strong>Branch</strong>&nbsp; <code>feature/streamlit-dashboard</code></span>
+    </div>
+
+    <div class="intro">
+      Honestly? <b>Really nice work.</b> You built a whole dashboard that actually runs end-to-end — someone can drop in
+      a CSV and get real charts back. That's not a small thing. On top of that you wrote proper docs and set up the project
+      like a pro. 👏<br><br>
+      The notes below aren't me nitpicking — think of them as <b>"here's how to level up your next one."</b>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat good"><div class="n">7</div><div class="l">Stuff you nailed</div></div>
+    <div class="stat improve"><div class="n">9</div><div class="l">Things to try next time</div></div>
+    <div class="stat"><div class="n">2</div><div class="l">Most impactful</div></div>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="strengths">✅ What you nailed</button>
+    <button class="tab-btn" data-tab="improve">🌱 Things to try next</button>
+  </nav>
+
+  <!-- ===================== STRENGTHS ===================== -->
+  <section class="panel-section active" id="strengths">
+    <h2 class="sec">Stuff you nailed 🙌</h2>
+    <p class="section-lead">Genuinely good calls in this PR — keep doing all of this.</p>
+
+    <div class="toolbar">
+      <div class="spacer"></div>
+      <button class="link-btn" data-expand="strengths">Open all</button>
+      <button class="link-btn" data-collapse="strengths">Close all</button>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S1</span>Your code is easy to read</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>I could read it top to bottom without getting lost. Your imports are tidy, your helper functions
+        (<code>detect_encoding</code>, <code>load_csv</code>, <code>process_data</code>) each do one clear thing, and the names actually
+        tell me what's going on. Future-you (and your teammates) will thank you for this.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S2</span>You made it fast with caching</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>Streamlit re-runs your whole script every time someone clicks a button. You spotted that and slapped
+        <code>@st.cache_data</code> on the slow bits, so they don't recompute every time. That's exactly the right move — a lot of
+        people miss this and wonder why their app feels sluggish.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S3</span>It actually feels nice to use</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>Little touches add up: it guesses the file's encoding for you but still lets you pick one, it shows a spinner while
+        it's busy, it gives friendly success/error messages, and the sidebar makes it easy to jump between views. You clearly
+        thought about the <em>person</em> using this, not just the code.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S4</span>You thought about what could go wrong</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>This is the mark of someone who's been burned before 😄. You handle the empty file, you drop columns that are all
+        the same value, you check there's enough data before running PCA, and you trim huge files down so the app doesn't freeze.
+        Wrapping it in <code>try/except</code> with <code>st.stop()</code> means a bad file shows a clean message instead of a scary crash.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S5</span>Your results are repeatable</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>You set <code>random_state=42</code> so the same file gives the same answer every time — no spooky "why did the numbers
+        change?" moments. Bonus points for using <code>n_init="auto"</code>, which is the current, non-deprecated way to call KMeans.
+        Nice attention to detail.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S6</span>You handled messy real-world files</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>Survey CSVs are notoriously messy — weird characters, odd encodings, all of it. Reaching for <code>chardet</code> to
+        sniff the encoding shows you were thinking about the <em>real</em> data people will upload, not just a clean example file.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S7</span>You set the project up like a pro</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>This one made me smile. You didn't just dump code — you rewrote the <span class="file">README</span>, added a
+        <span class="file">CONTRIBUTING</span> guide, a branching strategy, a commit template and a roadmap, and you even updated the
+        <code>run_streamlit</code> scripts to point at the new file. That kind of tidiness makes you really easy to work with on a team.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== IMPROVEMENTS ===================== -->
+  <section class="panel-section" id="improve">
+    <h2 class="sec">Things to try next time 🌱</h2>
+    <p class="section-lead">None of these are "you did it wrong." They're "here's how to make it even better." Each card has <em>what</em>, <em>why it matters</em>, and <em>what I'd do</em>.</p>
+
+    <div class="toolbar">
+      <div class="spacer"></div>
+      <button class="link-btn" data-expand="improve">Open all</button>
+      <button class="link-btn" data-collapse="improve">Close all</button>
+    </div>
+
+    <div class="card" data-sev="high">
+      <div class="card-head"><span class="title"><span class="id">I1</span>What does the "Delay Risk Index" actually mean?</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>The headline number is just the average of every numeric column in the row:</p>
+        <pre><code>df["Delay_Risk_Index"] = df[feature_cols].mean(axis=1)</code></pre>
+        <p><span class="label">Why it matters</span><br>Here's the thing — those columns aren't on the same scale or even about the
+        same thing. You might be averaging "years of experience" (a number like 12) with "severity rating" (1–5) and maybe even an
+        ID column. The biggest numbers just bully the average, so the "risk" score can go up for reasons that have nothing to do with
+        risk. If your mentor asked "why is this person high-risk?", right now it'd be hard to answer.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Decide what "risk" actually means, then build the number on purpose. Easiest win: average the <b>scaled</b> values
+          (you already create a scaled version for the charts — reuse it!) so every column counts equally. Even better: pick just the
+          columns that really relate to delay (the severity/likelihood questions) and write a one-line comment saying what the index is.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="high">
+      <div class="card-head"><span class="title"><span class="id">I2</span>Your cluster colours are blending together</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>On the PCA scatter plot you colour the dots by cluster:</p>
+        <pre><code>fig = px.scatter(df, x="PC1", y="PC2", color="Cluster", ...)</code></pre>
+        <p><span class="label">Why it matters</span><br>Because <code>Cluster</code> is a number (0, 1, 2, 3), Plotly thinks it's a
+        <em>measurement</em> and colours it like a temperature scale — light blue to dark blue. So instead of four clearly different
+        groups, you get four shades of the same colour and they're hard to tell apart. The whole point of a cluster plot is "look,
+        these are different groups!" — and right now that's getting lost.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Tell Plotly to treat the cluster as a label, not a number, by turning it into text first:
+          <pre><code>color=df["Cluster"].astype(str)</code></pre>
+          One tiny change and each group pops in its own distinct colour.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="medium">
+      <div class="card-head"><span class="title"><span class="id">I3</span>One of your cleanup tricks is on its way out</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>You convert columns to numbers with <code>df.apply(pd.to_numeric, errors="ignore")</code>.</p>
+        <p><span class="label">Why it matters</span><br>Two things. First, that <code>errors="ignore"</code> setting is being removed from
+        newer pandas, so this'll start throwing warnings (and eventually break). Second — and more important — "ignore" means if a
+        column <em>can't</em> be turned into numbers, pandas quietly hands it back unchanged and says nothing. So genuinely messy data can
+        sneak through without you ever knowing.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Use <code>errors="coerce"</code> instead. Anything that isn't a number becomes a blank (NaN), and then <em>you</em> decide what to
+          do — tell the user, drop it, or fill it in. The difference is "problems are visible" vs "problems are hidden," and visible always wins.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="medium">
+      <div class="card-head"><span class="title"><span class="id">I4</span>Why exactly 4 clusters?</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>KMeans is always set to find 4 groups, no matter what file gets uploaded:
+        <code>n_clusters=4</code>.</p>
+        <p><span class="label">Why it matters</span><br>4 might be perfect for one dataset and totally wrong for another — there's no
+        single right answer baked into the data. Hardcoding it hides a decision that should really be visible. (Same idea with squishing
+        everything down to just 2 PCA dimensions before clustering — you might be throwing away useful detail.)</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Add a little <code>st.slider</code> in the sidebar so people can try different numbers of clusters, and/or look up the
+          "elbow method" or "silhouette score" — they're simple ways to let the data suggest a good number for you.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="medium">
+      <div class="card-head"><span class="title"><span class="id">I5</span>You already have these tools &mdash; reuse them!</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>All the data-cleaning logic lives inside <span class="file">app.py</span>. But the
+        project already has ready-made helpers in <span class="file">CDRPS/src/preparation/</span> and
+        <span class="file">CDRPS/src/ingestion/</span>. There's also a leftover copy of the app at
+        <span class="file">CDRPS/notebooks/app.py</span> now sitting next to your new one.</p>
+        <p><span class="label">Why it matters</span><br>When the same logic lives in two places, they drift apart — you fix a bug in one
+        and forget the other. And mixing the "screen" code with the "data" code makes both harder to test. Two copies of <code>app.py</code>
+        will also confuse the next person about which one is real.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Import the existing helpers from <code>src</code> and call them from the dashboard, so the app file mostly just handles the
+          buttons and charts. Then delete (or clearly retire) the old notebook copy so there's one obvious source of truth.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="low">
+      <div class="card-head"><span class="title"><span class="id">I6</span>No tests yet for the data crunching</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>The clever logic in <code>process_data</code> doesn't have any tests around it.</p>
+        <p><span class="label">Why it matters</span><br>All those edge cases you handled (empty file, all-same columns, not enough
+        columns) are exactly the kind of thing that quietly breaks later when someone tweaks the code. Tests are basically a safety net
+        that yells at you the moment something regresses.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Pull <code>process_data</code> out into its own file and write a handful of quick <code>pytest</code> checks — one happy path with a
+          tiny made-up table, plus one for each edge case. The repo already has a <code>tests/</code> folder to drop them in.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="low">
+      <div class="card-head"><span class="title"><span class="id">I7</span>Your tooltips are showing everything</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>The scatter plot uses <code>hover_data=df.columns</code>, which puts <em>every single
+        column</em> into the hover popup.</p>
+        <p><span class="label">Why it matters</span><br>On a wide survey that's a giant, cluttered tooltip where the useful bits get
+        buried. Hovering should answer "what's important about this dot?", not dump the whole spreadsheet.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Just pick the few fields that matter, e.g. <code>hover_data=["Delay_Risk_Index", "Cluster"]</code> plus a couple of key survey questions.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="low">
+      <div class="card-head"><span class="title"><span class="id">I8</span>You're quietly shrinking big files</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>If a file has more than 5,000 rows, you randomly keep 5,000 of them — but you don't
+        tell the user.</p>
+        <p><span class="label">Why it matters</span><br>Smart move for speed, but imagine uploading 20,000 rows and the results only
+        describe a random quarter of them without any heads-up. That's a confusing surprise.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Pop up a quick <code>st.info("Showing a random sample of 5,000 rows")</code> when it happens, so people know what they're looking at.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="nit">
+      <div class="card-head"><span class="title"><span class="id">I9</span>Two little polish things</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>Genuinely minor, just for completeness:</p>
+        <p>• <span class="file">app.py</span> doesn't end with a blank line — add one. It keeps diffs clean and some tools expect it.<br>
+           • You set <code>engine="python"</code> when reading the CSV, which is the slower reader. The default one is faster and you don't
+           seem to need the python-only features, so you can drop it.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page">
+    <p>Bottom line: <b>this is a real, working contribution and you should be proud of it.</b> If you only touch two things, make it
+    <b>I1</b> (give the risk score a clear meaning) and <b>I2</b> (fix the cluster colours) — they're the ones people will actually notice
+    in the app. The rest you can pick off whenever. Seriously, nice work.</p>
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    // ---- Tab switching ----
+    var tabBtns = document.querySelectorAll(".tab-btn");
+    var sections = document.querySelectorAll(".panel-section");
+    tabBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var target = btn.getAttribute("data-tab");
+        tabBtns.forEach(function (b) { b.classList.toggle("active", b === btn); });
+        sections.forEach(function (s) { s.classList.toggle("active", s.id === target); });
+      });
+    });
+
+    // ---- Collapse / expand individual cards ----
+    document.querySelectorAll(".card-head").forEach(function (head) {
+      head.addEventListener("click", function () {
+        head.parentElement.classList.toggle("open");
+      });
+    });
+
+    // ---- Open all / close all (scoped to a section) ----
+    document.querySelectorAll("[data-expand]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var sec = document.getElementById(btn.getAttribute("data-expand"));
+        sec.querySelectorAll(".card").forEach(function (c) {
+          if (c.style.display !== "none") c.classList.add("open");
+        });
+      });
+    });
+    document.querySelectorAll("[data-collapse]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var sec = document.getElementById(btn.getAttribute("data-collapse"));
+        sec.querySelectorAll(".card").forEach(function (c) { c.classList.remove("open"); });
+      });
+    });
+  })();
+</script>
+</body>
+</html>
