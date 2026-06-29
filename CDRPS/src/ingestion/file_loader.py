@@ -55,9 +55,12 @@ def load_file(path: str) -> pd.DataFrame:
 
 
 # 3. preview_data(df: pd.DataFrame, n=5)
-def preview_data(df: pd.DataFrame, n=5):
+def preview_data(df: pd.DataFrame, n=5, num_rows=None):
     """
     Return the first n rows of the DataFrame.
     (No printing — the notebook decides how to display it.)
     """
+    if num_rows is not None:
+        n = num_rows
+
     return df.head(n)
