@@ -1,16 +1,25 @@
 import io
 
 import chardet
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import shap
 import streamlit as st
 
-from CDRPS.prediction_pipeline import categorize_risk, load_artifacts, predict_delay_risk
+from CDRPS.prediction_pipeline import (
+    categorize_risk,
+    load_artifacts,
+    predict_delay_risk,
+    prediction_confidence,
+)
+from CDRPS.shap_explain import explanation_text, top_contributors
 from CDRPS.src.validation.schema_validator import run_validation
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.impute import SimpleImputer
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
 
@@ -245,6 +254,66 @@ elif page == "Delay Risk Prediction":
         with st.spinner("Predicting delay risk..."):
             score = predict_delay_risk(user_inputs)
             category = categorize_risk(score)
+            confidence = prediction_confidence(user_inputs)
+            top5 = top_contributors(user_inputs, top_n=5)
 
         st.success(f"Predicted Delay Risk Index: **{score:.2f}**")
         st.info(f"Risk Category: **{category}**")
+        st.write(f"Confidence Score: **{confidence:.2f}**")
+
+        st.subheader("Top 5 Contributing Factors")
+        st.dataframe(top5)
+        for _, row in top5.iterrows():
+            feat = row["Feature"]
+            val = row["SHAP Value"]
+            st.write(f"- **{feat.replace('_', ' ')}** → SHAP impact: {val:.4f}")
+
+        st.markdown("### Explanation Summary")
+        contributor_pairs = list(top5[["Feature", "SHAP Value"]].itertuples(index=False, name=None))
+        st.info(explanation_text(contributor_pairs))
+
+        st.markdown("### Global Feature Importance")
+        model, scaler, feature_columns = load_artifacts()
+
+        background_df = df.reindex(columns=feature_columns).copy()
+        background_df = background_df.apply(pd.to_numeric, errors="coerce")
+        background_df = background_df.fillna(background_df.mean(numeric_only=True)).fillna(0.0)
+        background_df = background_df.sample(min(200, len(background_df)), random_state=42)
+
+        explainer = shap.TreeExplainer(model)
+        shap_vals_bg = explainer.shap_values(background_df)
+        if isinstance(shap_vals_bg, list):
+            shap_vals_bg = shap_vals_bg[0]
+
+        fig2, _ = plt.subplots()
+        shap.summary_plot(shap_vals_bg, background_df, show=False)
+        st.pyplot(fig2)
+        plt.close(fig2)
+
+        metrics = {"MAE": None, "RMSE": None, "R2": None}
+        if "Delay_Risk_Index" in df.columns:
+            eval_X = df.reindex(columns=feature_columns).copy()
+            eval_X = eval_X.apply(pd.to_numeric, errors="coerce")
+            eval_X = eval_X.fillna(eval_X.mean(numeric_only=True)).fillna(0.0)
+
+            y_true = pd.to_numeric(df["Delay_Risk_Index"], errors="coerce")
+            valid_mask = ~y_true.isna()
+            if valid_mask.any():
+                X_scaled_eval = scaler.transform(eval_X.loc[valid_mask].values)
+                y_pred_eval = model.predict(X_scaled_eval)
+                y_true_eval = y_true.loc[valid_mask].values
+                metrics = {
+                    "MAE": float(mean_absolute_error(y_true_eval, y_pred_eval)),
+                    "RMSE": float(np.sqrt(mean_squared_error(y_true_eval, y_pred_eval))),
+                    "R2": float(r2_score(y_true_eval, y_pred_eval)),
+                }
+
+        metadata = {
+            "model_type": type(model).__name__,
+            "n_estimators": getattr(model, "n_estimators", None),
+            "trained_on_rows": int(len(df)),
+            "trained_on_features": feature_columns,
+            "metrics": metrics,
+        }
+        st.markdown("### Model Metadata")
+        st.json(metadata)
