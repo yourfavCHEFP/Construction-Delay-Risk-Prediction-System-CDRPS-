@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder, PowerTransformer, StandardScaler
 
 
 def encode_categorical(
@@ -58,3 +58,52 @@ def scale_numerical(
     df[numeric_columns] = scaler.fit_transform(df[numeric_columns])
 
     return df, scaler
+
+
+def transform_skewed_features(
+    df: pd.DataFrame,
+    numeric_columns: List[str],
+    skew_threshold: float = 1.0,
+) -> Tuple[pd.DataFrame, PowerTransformer | None, Dict[str, object]]:
+    """
+    Transform highly skewed numeric features using Yeo-Johnson.
+
+    Returns:
+    - A new DataFrame with transformed skewed columns
+    - The fitted PowerTransformer (or None if no columns exceeded threshold)
+    - Metadata with selected columns and pre/post skew values
+    """
+    df = df.copy()
+    available_numeric_cols = [col for col in numeric_columns if col in df.columns]
+
+    if not available_numeric_cols:
+        return df, None, {"transformed_columns": [], "pre_skew": {}, "post_skew": {}}
+
+    skew_series = df[available_numeric_cols].skew(numeric_only=True)
+    skewed_cols = [
+        col
+        for col in available_numeric_cols
+        if pd.notna(skew_series.get(col)) and abs(float(skew_series[col])) >= skew_threshold
+    ]
+
+    if not skewed_cols:
+        return df, None, {
+            "transformed_columns": [],
+            "pre_skew": skew_series.to_dict(),
+            "post_skew": skew_series.to_dict(),
+        }
+
+    transformer = PowerTransformer(method="yeo-johnson", standardize=False)
+    transformed_values = transformer.fit_transform(df[skewed_cols])
+    df[skewed_cols] = transformed_values
+
+    post_skew = df[skewed_cols].skew(numeric_only=True).to_dict()
+    metadata = {
+        "transformed_columns": skewed_cols,
+        "pre_skew": skew_series.to_dict(),
+        "post_skew": post_skew,
+        "method": "yeo-johnson",
+        "skew_threshold": skew_threshold,
+    }
+
+    return df, transformer, metadata
