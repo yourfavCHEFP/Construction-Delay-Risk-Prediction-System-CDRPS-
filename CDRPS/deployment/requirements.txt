@@ -3,13 +3,9 @@ pandas
 numpy
 scikit-learn
 matplotlib
-seaborn
 shap
 joblib
 plotly
 chardet
 openpyxl
 xlrd
-
-
-
