@@ -1,5 +1,7 @@
 import io
 import logging
+from datetime import datetime
+from typing import cast
 
 import chardet
 import matplotlib.pyplot as plt
@@ -8,6 +10,7 @@ import pandas as pd
 import plotly.express as px
 import shap
 import streamlit as st
+from matplotlib.backends.backend_pdf import PdfPages
 
 from CDRPS.prediction_pipeline import (
     categorize_risk,
@@ -130,6 +133,45 @@ def process_data(df):
     df["Delay_Risk_Index"] = df[feature_cols].mean(axis=1)
 
     return df
+
+
+def build_prediction_pdf(df_export: pd.DataFrame) -> bytes:
+    """Build a compact PDF summary for prediction exports."""
+    buffer = io.BytesIO()
+    with PdfPages(buffer) as pdf:
+        fig, ax = plt.subplots(figsize=(8.27, 11.69))
+        ax.axis("off")
+
+        preview = df_export.head(20)
+        summary_lines = [
+            "CDRPS Prediction Export Summary",
+            f"Generated: {datetime.utcnow().isoformat()} UTC",
+            f"Rows: {len(df_export)}",
+            f"Columns: {', '.join(df_export.columns)}",
+            "",
+            "Top 20 Rows:",
+            preview.to_string(index=False),
+        ]
+
+        ax.text(
+            0.01,
+            0.99,
+            "\n".join(summary_lines),
+            va="top",
+            ha="left",
+            fontsize=8,
+            family="monospace",
+            wrap=True,
+        )
+        pdf.savefig(fig, bbox_inches="tight")
+        plt.close(fig)
+
+    return buffer.getvalue()
+
+
+def ensure_prediction_history_state():
+    if "prediction_history" not in st.session_state:
+        st.session_state["prediction_history"] = []
 
 
 st.title("🏗️ Construction Delay Risk Prediction System")
@@ -286,43 +328,105 @@ elif page == "Raw Data":
 
 elif page == "Predictions":
     st.subheader("Predictions")
+    ensure_prediction_history_state()
+    st.markdown("### Predictions Table")
+    st.caption("Prediction history is captured from the Delay Risk Prediction page.")
 
-    predictions_ui = st.container()
-    with predictions_ui:
-        st.markdown("### Predictions Table")
-        predictions_description_slot = st.empty()
-        predictions_sort_filter_controls_slot = st.empty()
-        predictions_table_slot = st.empty()
+    history_df = pd.DataFrame(st.session_state["prediction_history"])
+    if history_df.empty:
+        st.info("No predictions yet. Run at least one prediction to populate this table.")
+    else:
+        st.markdown("#### Sort and Filter Controls")
+        all_columns = history_df.columns.tolist()
 
-        with predictions_sort_filter_controls_slot.container():
-            st.markdown("#### KAN-60 Sort and Filter Controls")
-            predictions_sort_controls_slot = st.empty()
-            predictions_filter_controls_slot = st.empty()
-            predictions_search_bar_slot = st.empty()
-            predictions_column_selection_slot = st.empty()
-            predictions_pagination_slot = st.empty()
+        c1, c2, c3 = st.columns([2, 1, 2])
+        sort_column = c1.selectbox("Sort by", all_columns, index=0)
+        sort_ascending = c2.checkbox("Ascending", value=False)
+        search_query = c3.text_input("Search", value="", placeholder="Type to search")
 
-        predictions_export_download_slot = st.empty()
-        with predictions_export_download_slot.container():
-            st.markdown("#### KAN-70 Export and Download Interface")
-            predictions_csv_export_slot = st.empty()
-            predictions_pdf_export_slot = st.empty()
-            predictions_download_options_slot = st.empty()
-            predictions_future_export_formats_slot = st.empty()
+        filter_cols = st.columns([2, 2, 2])
+        category_options = sorted(history_df["risk_category"].dropna().unique().tolist()) if "risk_category" in history_df.columns else []
+        selected_categories = filter_cols[0].multiselect(
+            "Risk Category Filter",
+            options=category_options,
+            default=category_options,
+        )
 
-        predictions_pipeline_integration_slot = st.empty()
-        with predictions_pipeline_integration_slot.container():
-            st.markdown("#### Backend Integration Placeholders")
-            predictions_list_loader_slot = st.empty()
-            predictions_dataframe_store_slot = st.empty()
-            predictions_table_population_slot = st.empty()
-            predictions_filter_application_slot = st.empty()
-            predictions_export_read_slot = st.empty()
-            predictions_export_dataframe_pass_slot = st.empty()
-            predictions_csv_trigger_slot = st.empty()
-            predictions_excel_trigger_slot = st.empty()
-            predictions_pdf_trigger_slot = st.empty()
-            predictions_download_bytes_slot = st.empty()
+        selected_columns = filter_cols[1].multiselect(
+            "Visible Columns",
+            options=all_columns,
+            default=all_columns,
+        )
+        page_size = int(filter_cols[2].selectbox("Rows per page", options=[5, 10, 20, 50], index=1))
+
+        filtered_df = history_df.copy()
+        if selected_categories and "risk_category" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["risk_category"].isin(selected_categories)]
+
+        if search_query.strip():
+            term = search_query.strip().lower()
+            mask = filtered_df.astype(str).apply(lambda col: col.str.lower().str.contains(term, na=False))
+            filtered_df = filtered_df[mask.any(axis=1)]
+
+        filtered_df = filtered_df.sort_values(by=sort_column, ascending=sort_ascending)
+
+        if not selected_columns:
+            selected_columns = all_columns
+
+        filtered_display = filtered_df[selected_columns]
+        total_rows = len(filtered_display)
+        total_pages = max(1, int(np.ceil(total_rows / page_size)))
+        page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, step=1)
+
+        start_idx = (int(page_number) - 1) * page_size
+        end_idx = start_idx + page_size
+        page_df = filtered_display.iloc[start_idx:end_idx]
+
+        st.caption(f"Showing {len(page_df)} of {total_rows} filtered rows.")
+        st.dataframe(page_df, use_container_width=True)
+
+        st.markdown("#### Export and Download Interface")
+        csv_bytes = filtered_display.to_csv(index=False).encode("utf-8")
+
+        excel_buffer = io.BytesIO()
+        filtered_display.to_excel(excel_buffer, index=False)
+        excel_bytes = excel_buffer.getvalue()
+
+        pdf_bytes = build_prediction_pdf(filtered_display)
+
+        e1, e2, e3 = st.columns(3)
+        e1.download_button(
+            "Download CSV",
+            data=csv_bytes,
+            file_name="predictions_export.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+        e2.download_button(
+            "Download Excel",
+            data=excel_bytes,
+            file_name="predictions_export.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+        e3.download_button(
+            "Download PDF",
+            data=pdf_bytes,
+            file_name="predictions_export.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+        st.session_state["shared_filters"] = {
+            "sort_column": sort_column,
+            "sort_ascending": sort_ascending,
+            "search_query": search_query,
+            "selected_categories": selected_categories,
+            "selected_columns": selected_columns,
+            "page_size": page_size,
+            "page_number": int(page_number),
+        }
+        st.session_state["shared_data_object"] = filtered_display
 
 elif page == "Visual Insights":
     st.subheader("Visual Insights")
@@ -415,73 +519,125 @@ elif page == "Visual Insights":
 
 elif page == "SHAP Visualizations":
     st.subheader("SHAP Visualizations")
+    top5 = st.session_state.get("shared_shap_values")
+    if top5 is None or len(top5) == 0:
+        st.info("Run a prediction first to view SHAP visualizations.")
+    else:
+        st.markdown("### SHAP Summary")
+        st.dataframe(top5, use_container_width=True)
 
-    shap_visualizations_ui = st.container()
-    with shap_visualizations_ui:
-        st.markdown("### SHAP Visualization Pipeline Placeholders")
-        shap_summary_plot_slot = st.empty()
-        shap_bar_chart_slot = st.empty()
-        shap_force_plot_slot = st.empty()
-        shap_dependence_plot_slot = st.empty()
-        shap_values_input_slot = st.empty()
-        shap_plot_generation_slot = st.empty()
-        shap_visual_components_slot = st.empty()
-        shap_metadata_usage_slot = st.empty()
+        shap_chart_df = top5.copy()
+        shap_chart_df["Abs Impact"] = shap_chart_df["SHAP Value"].abs()
+
+        fig_shap = px.bar(
+            shap_chart_df.sort_values("Abs Impact", ascending=True),
+            x="Abs Impact",
+            y="Feature",
+            orientation="h",
+            title="SHAP Feature Impact (Absolute)",
+            color="SHAP Value",
+            color_continuous_scale="RdBu",
+        )
+        st.plotly_chart(fig_shap, use_container_width=True)
+        st.caption("Force and dependence plots can be added in a later SHAP-specific enhancement.")
 
 elif page == "Metadata Visualizations":
     st.subheader("Metadata Visualizations")
+    metadata = st.session_state.get("shared_metadata")
+    if metadata is None:
+        st.info("Run a prediction first to view metadata visualizations.")
+    else:
+        st.markdown("### Metadata Overview")
+        st.json(metadata)
 
-    metadata_visualizations_ui = st.container()
-    with metadata_visualizations_ui:
-        st.markdown("### Metadata Visualization Pipeline Placeholders")
-        metadata_backend_loader_slot = st.empty()
-        metadata_chart_binding_slot = st.empty()
-        metadata_summary_generation_slot = st.empty()
-        metadata_visual_update_slot = st.empty()
+        metrics = metadata.get("metrics", {})
+        valid_metrics = {k: v for k, v in metrics.items() if isinstance(v, (float, int))}
+        if valid_metrics:
+            metric_df = pd.DataFrame(
+                {"Metric": list(valid_metrics.keys()), "Value": list(valid_metrics.values())}
+            )
+            fig_meta = px.bar(metric_df, x="Metric", y="Value", title="Model Metrics")
+            st.plotly_chart(fig_meta, use_container_width=True)
 
 elif page == "Risk Summary Visualizations":
     st.subheader("Risk Summary Visualizations")
+    ensure_prediction_history_state()
+    history_df = pd.DataFrame(st.session_state["prediction_history"])
+    if history_df.empty:
+        st.info("Run predictions first to build risk summary visualizations.")
+    else:
+        st.markdown("### Risk Summary")
+        s1, s2, s3 = st.columns(3)
+        s1.metric("Total Predictions", len(history_df))
+        s2.metric("Average Score", f"{history_df['risk_score'].mean():.2f}")
+        s3.metric("High Risk Count", int((history_df["risk_category"] == "High Risk").sum()))
 
-    risk_summary_visualizations_ui = st.container()
-    with risk_summary_visualizations_ui:
-        st.markdown("### Risk Summary Visualization Placeholders")
-        risk_summary_charts_slot = st.empty()
-        risk_summary_stats_slot = st.empty()
-        risk_summary_insights_slot = st.empty()
+        trend_df = history_df.reset_index().rename(columns={"index": "Run"})
+        fig_trend = px.line(trend_df, x="Run", y="risk_score", title="Risk Score Trend")
+        st.plotly_chart(fig_trend, use_container_width=True)
+        st.caption("Insight: use this trend to monitor whether risk signals are worsening or improving.")
 
 elif page == "Risk Category Visualizations":
     st.subheader("Risk Category Visualizations")
+    ensure_prediction_history_state()
+    history_df = pd.DataFrame(st.session_state["prediction_history"])
+    if history_df.empty:
+        st.info("Run predictions first to view category visualizations.")
+    else:
+        cat_counts = history_df["risk_category"].value_counts().reset_index()
+        cat_counts.columns = ["Category", "Count"]
 
-    risk_category_visualizations_ui = st.container()
-    with risk_category_visualizations_ui:
-        st.markdown("### Risk Category Visualization Placeholders")
-        category_distribution_charts_slot = st.empty()
-        category_comparison_charts_slot = st.empty()
-        category_insights_slot = st.empty()
+        fig_cat_bar = px.bar(cat_counts, x="Category", y="Count", title="Risk Category Distribution")
+        st.plotly_chart(fig_cat_bar, use_container_width=True)
+
+        fig_cat_pie = px.pie(cat_counts, names="Category", values="Count", title="Category Share")
+        st.plotly_chart(fig_cat_pie, use_container_width=True)
+        st.caption("Insight: category balance helps prioritize mitigation resources.")
 
 elif page == "Risk Distribution Visualizations":
     st.subheader("Risk Distribution Visualizations")
+    ensure_prediction_history_state()
+    history_df = pd.DataFrame(st.session_state["prediction_history"])
+    if history_df.empty:
+        st.info("Run predictions first to view distribution visualizations.")
+    else:
+        fig_hist = px.histogram(history_df, x="risk_score", nbins=15, title="Risk Score Histogram")
+        st.plotly_chart(fig_hist, use_container_width=True)
 
-    risk_distribution_visualizations_ui = st.container()
-    with risk_distribution_visualizations_ui:
-        st.markdown("### Risk Distribution Visualization Placeholders")
-        risk_distribution_charts_slot = st.empty()
-        risk_distribution_histograms_slot = st.empty()
-        risk_distribution_density_plots_slot = st.empty()
+        fig_density = px.density_contour(history_df, x="risk_score", y="confidence")
+        fig_density.update_layout(title="Risk Score vs Confidence Density")
+        st.plotly_chart(fig_density, use_container_width=True)
 
 elif page == "Factor Impact Visualizations":
     st.subheader("Factor Impact Visualizations")
-
-    factor_impact_visualizations_ui = st.container()
-    with factor_impact_visualizations_ui:
-        st.markdown("### Factor Impact Visualization Placeholders")
-        factor_impact_charts_slot = st.empty()
-        feature_importance_visuals_slot = st.empty()
-        contribution_breakdowns_slot = st.empty()
+    top5 = st.session_state.get("shared_shap_values")
+    if top5 is None or len(top5) == 0:
+        st.info("Run a prediction first to view factor impact visualizations.")
+    else:
+        impact_df = top5.copy()
+        impact_df["Abs Impact"] = impact_df["SHAP Value"].abs()
+        fig_factor = px.bar(
+            impact_df.sort_values("Abs Impact", ascending=True),
+            x="Abs Impact",
+            y="Feature",
+            orientation="h",
+            title="Factor Impact and Contribution Breakdown",
+            color="Abs Impact",
+            color_continuous_scale="OrRd",
+        )
+        st.plotly_chart(fig_factor, use_container_width=True)
+        st.dataframe(impact_df[["Feature", "SHAP Value", "Abs Impact"]], use_container_width=True)
 
 elif page == "Delay Risk Prediction":
     st.subheader("Delay Risk Prediction")
     st.write("Adjust the project factors to estimate the delay risk index.")
+    ensure_prediction_history_state()
+
+    if df is None:
+        st.error("Please upload and process a dataset before running predictions.")
+        st.stop()
+    assert df is not None
+    prediction_df = cast(pd.DataFrame, df)
 
     try:
         load_artifacts()
@@ -489,7 +645,7 @@ elif page == "Delay Risk Prediction":
         st.error(f"Failed to load prediction artifacts: {exc}")
         st.stop()
 
-    numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
+    numeric_cols = prediction_df.select_dtypes(include=["int64", "float64"]).columns.tolist()
     if "Delay_Risk_Index" in numeric_cols:
         numeric_cols.remove("Delay_Risk_Index")
 
@@ -498,7 +654,9 @@ elif page == "Delay Risk Prediction":
 
     for i, col_name in enumerate(numeric_cols):
         with cols[i % 2]:
-            default_val = float(df[col_name].mean()) if col_name in df.columns else 0.0
+            default_val = (
+                float(prediction_df[col_name].mean()) if col_name in prediction_df.columns else 0.0
+            )
             user_inputs[col_name] = st.number_input(
                 col_name,
                 value=default_val,
@@ -552,11 +710,17 @@ elif page == "Delay Risk Prediction":
             contributors_shap_values_slot = st.empty()
             contributors_visual_slot = st.empty()
 
-        with st.spinner("Predicting delay risk..."):
-            score = predict_delay_risk(user_inputs)
-            category = categorize_risk(score)
-            confidence = prediction_confidence(user_inputs)
-            top5 = top_contributors(user_inputs, top_n=5)
+        try:
+            with st.spinner("Predicting delay risk..."):
+                logger.info("Running prediction pipeline")
+                score = predict_delay_risk(user_inputs)
+                category = categorize_risk(score)
+                confidence = prediction_confidence(user_inputs)
+                top5 = top_contributors(user_inputs, top_n=5)
+        except Exception as exc:
+            logger.exception("Prediction flow failed")
+            st.error(f"Prediction flow failed: {exc}")
+            st.stop()
 
         risk_score_slot.success(f"Predicted Delay Risk Index: **{score:.2f}**")
         risk_category_slot.info(f"Risk Category: **{category}**")
@@ -620,7 +784,7 @@ elif page == "Delay Risk Prediction":
         st.markdown("### Global Feature Importance")
         model, scaler, feature_columns = load_artifacts()
 
-        background_df = df.reindex(columns=feature_columns).copy()
+        background_df = prediction_df.reindex(columns=feature_columns).copy()
         background_df = background_df.apply(pd.to_numeric, errors="coerce")
         background_df = background_df.fillna(background_df.mean(numeric_only=True)).fillna(0.0)
         background_df = background_df.sample(min(200, len(background_df)), random_state=42)
@@ -636,12 +800,12 @@ elif page == "Delay Risk Prediction":
         plt.close(fig2)
 
         metrics = {"MAE": None, "RMSE": None, "R2": None}
-        if "Delay_Risk_Index" in df.columns:
-            eval_X = df.reindex(columns=feature_columns).copy()
+        if "Delay_Risk_Index" in prediction_df.columns:
+            eval_X = prediction_df.reindex(columns=feature_columns).copy()
             eval_X = eval_X.apply(pd.to_numeric, errors="coerce")
             eval_X = eval_X.fillna(eval_X.mean(numeric_only=True)).fillna(0.0)
 
-            y_true = pd.to_numeric(df["Delay_Risk_Index"], errors="coerce")
+            y_true = pd.to_numeric(prediction_df["Delay_Risk_Index"], errors="coerce")
             valid_mask = ~y_true.isna()
             if valid_mask.any():
                 X_scaled_eval = scaler.transform(eval_X.loc[valid_mask].values)
@@ -656,9 +820,49 @@ elif page == "Delay Risk Prediction":
         metadata = {
             "model_type": type(model).__name__,
             "n_estimators": getattr(model, "n_estimators", None),
-            "trained_on_rows": int(len(df)),
+            "trained_on_rows": int(len(prediction_df)),
             "trained_on_features": feature_columns,
             "metrics": metrics,
         }
         st.markdown("### Model Metadata")
         st.json(metadata)
+
+        prediction_result = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "risk_score": float(score),
+            "risk_category": category,
+            "confidence": float(confidence),
+            "top_factor": str(top5.iloc[0]["Feature"]) if not top5.empty else None,
+            "top_factor_shap": float(top5.iloc[0]["SHAP Value"]) if not top5.empty else None,
+        }
+
+        st.session_state["prediction_history"].append(prediction_result)
+        st.session_state["shared_prediction_results"] = prediction_result
+        st.session_state["shared_shap_values"] = top5
+        st.session_state["shared_metadata"] = metadata
+        st.session_state["shared_data_object"] = prediction_df
+        st.session_state["shared_charts"] = {
+            "top_factor_impact": top5[["Feature", "SHAP Value"]].to_dict("records") if not top5.empty else []
+        }
+
+        backend_prediction_call_slot.success("Prediction function call completed.")
+        prediction_result_store_slot.info("Prediction result stored in shared session state.")
+        shap_pipeline_call_slot.success("SHAP pipeline call completed.")
+        shap_values_store_slot.info("SHAP values stored in shared session state.")
+        shap_chart_reference_slot.info("SHAP chart data reference prepared.")
+        shap_explanation_display_slot.info("SHAP explanation text prepared for display.")
+        metadata_extraction_call_slot.success("Metadata extraction completed.")
+        metadata_store_slot.info("Metadata stored in shared session state.")
+        metadata_display_slot.info("Metadata display updated in UI.")
+        risk_summary_call_slot.success("Risk summary pipeline completed.")
+        risk_summary_output_store_slot.info("Risk summary output stored.")
+        risk_summary_display_slot.info("Risk summary UI updated.")
+        risk_category_call_slot.success("Risk category pipeline completed.")
+        risk_category_output_store_slot.info("Risk category output stored.")
+        risk_category_display_slot.info("Risk category UI updated.")
+        risk_distribution_call_slot.success("Risk distribution pipeline completed.")
+        risk_distribution_output_store_slot.info("Risk distribution output stored.")
+        risk_distribution_chart_display_slot.info("Risk distribution chart references updated.")
+        factor_impact_call_slot.success("Factor impact pipeline completed.")
+        factor_impact_output_store_slot.info("Factor impact output stored.")
+        factor_impact_chart_display_slot.info("Factor impact chart references updated.")
