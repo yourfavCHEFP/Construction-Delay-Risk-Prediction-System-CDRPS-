@@ -45,11 +45,21 @@ def prepare_features(input_dict: Dict[str, float]) -> np.ndarray:
     df = pd.DataFrame([row])
 
     if _power_transformer is not None:
-        df = pd.DataFrame(
-            _power_transformer.transform(df),
-            columns=feature_columns,
-            index=df.index,
-        )
+        transformer_columns = list(getattr(_power_transformer, "feature_names_in_", []))
+        if transformer_columns:
+            available_cols = [c for c in transformer_columns if c in df.columns]
+            if available_cols:
+                transformed = _power_transformer.transform(df[available_cols])
+                transformed_df = pd.DataFrame(
+                    transformed,
+                    columns=available_cols,
+                    index=df.index,
+                )
+                df.loc[:, available_cols] = transformed_df
+        else:
+            # Fallback for transformers trained without feature names.
+            transformed = _power_transformer.transform(df.values)
+            df = pd.DataFrame(transformed, columns=feature_columns, index=df.index)
 
     X = df.values
     X_scaled = scaler.transform(X)
