@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 from typing import Dict
 import joblib
@@ -17,10 +18,22 @@ _model = None
 _scaler = None
 _feature_columns = None
 _power_transformer = None
+logger = logging.getLogger("cdrps.prediction_pipeline")
+if not logger.handlers:
+    logger.addHandler(logging.NullHandler())
+
+
+def _ensure_artifacts_exist() -> None:
+    missing = [str(path) for path in [MODEL_PATH, SCALER_PATH, FEATURES_PATH] if not path.exists()]
+    if missing:
+        logger.error("missing_model_artifacts | %s", {"missing": missing})
+        raise FileNotFoundError(f"Missing required model artifacts: {missing}")
 
 
 def load_artifacts():
     global _model, _scaler, _feature_columns, _power_transformer
+
+    _ensure_artifacts_exist()
 
     if _model is None:
         _model = joblib.load(MODEL_PATH)
@@ -34,6 +47,8 @@ def load_artifacts():
 
     if _power_transformer is None and POWER_TRANSFORMER_PATH.exists():
         _power_transformer = joblib.load(POWER_TRANSFORMER_PATH)
+
+    logger.info("artifacts_loaded | %s", {"model": type(_model).__name__ if _model is not None else None})
 
     return _model, _scaler, _feature_columns
 
@@ -70,6 +85,7 @@ def predict_delay_risk(input_dict: Dict[str, float]) -> float:
     model, _, _ = load_artifacts()
     X_scaled = prepare_features(input_dict)
     y_pred = model.predict(X_scaled)[0]
+    logger.info("prediction_completed | %s", {"prediction": float(y_pred)})
     return float(y_pred)
 
 

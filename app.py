@@ -1,6 +1,8 @@
 import io
 import logging
+import os
 from datetime import datetime
+from pathlib import Path
 from typing import cast
 
 import chardet
@@ -32,52 +34,63 @@ st.set_page_config(page_title="Construction Delay Risk System", layout="wide")
 logger = logging.getLogger("cdrps.app")
 if not logger.handlers:
     logger.addHandler(logging.NullHandler())
+logger.setLevel(logging.INFO)
 
-# Sprint 4 global sync placeholders (KAN-118, KAN-121, KAN-122, KAN-123).
+
+def _log_event(level: int, event: str, **context) -> None:
+    """Emit structured application logs without leaking sensitive payloads."""
+    payload = {key: str(value) for key, value in context.items() if value is not None}
+    logger.log(level, "%s | %s", event, payload)
+
+
+def _sanitize_export_name(file_name: str) -> str:
+    cleaned = "".join(ch for ch in file_name if ch.isalnum() or ch in {"-", "_", "."}).strip(".")
+    return cleaned or "export"
+
+
+def _require_model_files() -> None:
+    required = [
+        Path("CDRPS") / "models" / "model.pkl",
+        Path("CDRPS") / "models" / "scaler.pkl",
+        Path("CDRPS") / "models" / "feature_columns.json",
+    ]
+    missing = [str(path) for path in required if not path.exists()]
+    if missing:
+        raise FileNotFoundError(f"Missing required model assets: {missing}")
+
+
+def _auth_enabled() -> bool:
+    return os.getenv("CDRPS_AUTH_ENABLED", "false").lower() in {"1", "true", "yes"}
+
+
+def _authorize_page(page_name: str) -> bool:
+    if not _auth_enabled():
+        return True
+
+    role = st.session_state.get("user_role", "guest")
+    page_access = {
+        "admin": {"Predictions", "Visual Insights", "SHAP Visualizations", "Metadata Visualizations", "Risk Summary Visualizations", "Risk Category Visualizations", "Risk Distribution Visualizations", "Factor Impact Visualizations", "Delay Risk Prediction"},
+        "user": {"Predictions", "Visual Insights", "Delay Risk Prediction"},
+        "guest": {"Delay Risk Prediction"},
+    }
+
+    allowed = page_access.get(role, page_access["guest"])
+    return page_name in allowed
+
 st.session_state.setdefault("shared_data_object", None)
 st.session_state.setdefault("shared_prediction_results", None)
 st.session_state.setdefault("shared_metadata", None)
 st.session_state.setdefault("shared_shap_values", None)
 st.session_state.setdefault("shared_charts", None)
 st.session_state.setdefault("shared_filters", None)
+st.session_state.setdefault("prediction_history", [])
+st.session_state.setdefault("user_role", "guest")
+st.session_state.setdefault("user_name", "guest")
 
-# Sprint 4 pipeline placeholders (KAN-119, KAN-120, KAN-124, KAN-125, KAN-126).
-pipeline_placeholders = {
-    "error_handling": {
-        "input_validation": None,
-        "missing_model_error": None,
-        "missing_file_error": None,
-        "shap_error": None,
-        "chart_error": None,
-    },
-    "logging": {
-        "prediction_logs": None,
-        "shap_logs": None,
-        "metadata_logs": None,
-        "export_logs": None,
-        "chart_logs": None,
-    },
-    "performance": {
-        "faster_chart_rendering": None,
-        "faster_shap_computation": None,
-        "faster_metadata_extraction": None,
-        "faster_predictions": None,
-    },
-    "qa": {
-        "ui_consistency_checks": None,
-        "backend_consistency_checks": None,
-        "chart_consistency_checks": None,
-        "shap_consistency_checks": None,
-        "metadata_consistency_checks": None,
-    },
-    "bug_fix": {
-        "broken_imports": None,
-        "broken_paths": None,
-        "broken_charts": None,
-        "broken_shap_visuals": None,
-        "broken_metadata_displays": None,
-    },
-}
+if _auth_enabled():
+    st.sidebar.markdown("### Access Control")
+    st.session_state["user_name"] = st.sidebar.text_input("Username", value=st.session_state["user_name"])
+    st.session_state["user_role"] = st.sidebar.selectbox("Role", ["guest", "user", "admin"], index=["guest", "user", "admin"].index(st.session_state.get("user_role", "guest")))
 
 
 @st.cache_data
@@ -206,6 +219,12 @@ page = st.sidebar.radio(
     ],
 )
 
+_log_event(logging.INFO, "page_selected", page=page, user=st.session_state.get("user_name"), role=st.session_state.get("user_role"))
+
+if not _authorize_page(page):
+    st.error("You do not have access to this page.")
+    st.stop()
+
 df = None
 
 if uploaded_file is not None:
@@ -223,6 +242,7 @@ if uploaded_file is not None:
 
         with st.spinner("Reading file..."):
             df_raw = load_uploaded_file(file_bytes, uploaded_file.name, encoding)
+        _log_event(logging.INFO, "file_loaded", file_name=uploaded_file.name, rows=len(df_raw), columns=len(df_raw.columns))
 
         with st.spinner("Running validation..."):
             validation_results = run_validation(
@@ -275,6 +295,7 @@ if uploaded_file is not None:
 
         with st.spinner("Processing data..."):
             df = process_data(df)
+        _log_event(logging.INFO, "data_processed", rows=len(df), columns=len(df.columns))
 
         st.success("✅ File uploaded and processed successfully!")
 

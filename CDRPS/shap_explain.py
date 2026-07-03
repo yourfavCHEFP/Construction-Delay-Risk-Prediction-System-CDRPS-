@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import logging
 from typing import Iterable, Sequence, Tuple
 
 import joblib
@@ -16,10 +17,22 @@ FEATURES_PATH = MODELS_DIR / "feature_columns.json"
 _model = None
 _feature_columns = None
 _explainer = None
+logger = logging.getLogger("cdrps.shap_explain")
+if not logger.handlers:
+    logger.addHandler(logging.NullHandler())
+
+
+def _ensure_shap_assets_exist() -> None:
+    missing = [str(path) for path in [MODEL_PATH, FEATURES_PATH] if not path.exists()]
+    if missing:
+        logger.error("missing_shap_assets | %s", {"missing": missing})
+        raise FileNotFoundError(f"Missing required SHAP assets: {missing}")
 
 
 def load_explainer_artifacts():
     global _model, _feature_columns, _explainer
+
+    _ensure_shap_assets_exist()
 
     if _model is None:
         _model = joblib.load(MODEL_PATH)
@@ -30,6 +43,8 @@ def load_explainer_artifacts():
 
     if _explainer is None:
         _explainer = shap.TreeExplainer(_model)
+
+    logger.info("explainer_loaded | %s", {"model": type(_model).__name__ if _model is not None else None})
 
     return _feature_columns, _explainer
 
