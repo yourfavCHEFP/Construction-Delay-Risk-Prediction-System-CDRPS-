@@ -63,6 +63,10 @@ def _auth_enabled() -> bool:
     return os.getenv("CDRPS_AUTH_ENABLED", "false").lower() in {"1", "true", "yes"}
 
 
+def _locale_enabled() -> bool:
+    return os.getenv("CDRPS_LOCALE_ENABLED", "false").lower() in {"1", "true", "yes"}
+
+
 def _authorize_page(page_name: str) -> bool:
     if not _auth_enabled():
         return True
@@ -86,11 +90,61 @@ st.session_state.setdefault("shared_filters", None)
 st.session_state.setdefault("prediction_history", [])
 st.session_state.setdefault("user_role", "guest")
 st.session_state.setdefault("user_name", "guest")
+st.session_state.setdefault("language", "en")
+st.session_state.setdefault("region", "global")
+st.session_state.setdefault("currency", "USD")
+
+
+def _localization_context() -> dict[str, str]:
+    return {
+        "language": str(st.session_state.get("language", "en")),
+        "region": str(st.session_state.get("region", "global")),
+        "currency": str(st.session_state.get("currency", "USD")),
+    }
+
+
+def _localized_text(key: str, default: str) -> str:
+    translations = {
+        "en": {
+            "dashboard_title": "Construction Delay Risk Prediction System",
+            "dashboard_caption": "Validation issues are shown immediately after upload.",
+        },
+        "es": {
+            "dashboard_title": "Sistema de Predicción de Riesgo de Retraso en Construcción",
+            "dashboard_caption": "Los problemas de validación se muestran inmediatamente después de cargar el archivo.",
+        },
+        "fr": {
+            "dashboard_title": "Système de prédiction du risque de retard de construction",
+            "dashboard_caption": "Les problèmes de validation sont affichés immédiatement après le chargement.",
+        },
+    }
+    language = st.session_state.get("language", "en")
+    return translations.get(language, {}).get(key, default)
+
+
+def _localized_datetime(value: datetime | None = None) -> str:
+    value = value or datetime.utcnow()
+    return value.isoformat(timespec="seconds")
+
+
+def _localized_currency(amount: float) -> str:
+    currency = st.session_state.get("currency", "USD")
+    return f"{currency} {amount:,.2f}"
+
+
+def _localized_label(label: str) -> str:
+    return f"{label} ({st.session_state.get('language', 'en')})"
 
 if _auth_enabled():
     st.sidebar.markdown("### Access Control")
     st.session_state["user_name"] = st.sidebar.text_input("Username", value=st.session_state["user_name"])
     st.session_state["user_role"] = st.sidebar.selectbox("Role", ["guest", "user", "admin"], index=["guest", "user", "admin"].index(st.session_state.get("user_role", "guest")))
+
+if _locale_enabled():
+    st.sidebar.markdown("### Localization")
+    st.session_state["language"] = st.sidebar.selectbox("Language", ["en", "es", "fr"], index=["en", "es", "fr"].index(st.session_state.get("language", "en")))
+    st.session_state["region"] = st.sidebar.selectbox("Region", ["global", "americas", "europe", "apac"], index=["global", "americas", "europe", "apac"].index(st.session_state.get("region", "global")))
+    st.session_state["currency"] = st.sidebar.selectbox("Currency", ["USD", "EUR", "GBP", "AED"], index=["USD", "EUR", "GBP", "AED"].index(st.session_state.get("currency", "USD")))
 
 
 @st.cache_data
@@ -187,9 +241,9 @@ def ensure_prediction_history_state():
         st.session_state["prediction_history"] = []
 
 
-st.title("🏗️ Construction Delay Risk Prediction System")
+st.title(_localized_text("dashboard_title", "🏗️ Construction Delay Risk Prediction System"))
 st.write("Interactive dashboard for analyzing construction delay factors.")
-st.caption("Validation issues are shown immediately after upload.")
+st.caption(_localized_text("dashboard_caption", "Validation issues are shown immediately after upload."))
 
 uploaded_file = st.file_uploader("Upload CSV/Excel", type=["csv", "xlsx", "xls"])
 
