@@ -7,17 +7,31 @@ import pandas as pd
 import shap
 
 
-ROOT = Path(__file__).resolve().parents[1]
-MODELS_DIR = ROOT / "CDRPS" / "models"
+BASE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = BASE_DIR / "models"
 
 MODEL_PATH = MODELS_DIR / "model.pkl"
 FEATURES_PATH = MODELS_DIR / "feature_columns.json"
 
-_model = joblib.load(MODEL_PATH)
-with open(FEATURES_PATH, "r") as f:
-    _feature_columns = json.load(f)
+_model = None
+_feature_columns = None
+_explainer = None
 
-_explainer = shap.TreeExplainer(_model)
+
+def load_explainer_artifacts():
+    global _model, _feature_columns, _explainer
+
+    if _model is None:
+        _model = joblib.load(MODEL_PATH)
+
+    if _feature_columns is None:
+        with open(FEATURES_PATH, "r") as f:
+            _feature_columns = json.load(f)
+
+    if _explainer is None:
+        _explainer = shap.TreeExplainer(_model)
+
+    return _feature_columns, _explainer
 
 
 def _normalize_shap_values(shap_values):
@@ -29,9 +43,10 @@ def _normalize_shap_values(shap_values):
 
 
 def shap_explain_single(input_dict: dict):
-    row = {col: float(input_dict.get(col, 0.0)) for col in _feature_columns}
+    feature_columns, explainer = load_explainer_artifacts()
+    row = {col: float(input_dict.get(col, 0.0)) for col in feature_columns}
     df = pd.DataFrame([row])
-    shap_values = _normalize_shap_values(_explainer.shap_values(df))
+    shap_values = _normalize_shap_values(explainer.shap_values(df))
     return df, shap_values
 
 

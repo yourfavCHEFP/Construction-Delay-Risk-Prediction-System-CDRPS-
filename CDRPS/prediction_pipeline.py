@@ -5,8 +5,8 @@ import joblib
 import pandas as pd
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
-MODELS_DIR = ROOT / "CDRPS" / "models"
+BASE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = BASE_DIR / "models"
 
 MODEL_PATH = MODELS_DIR / "model.pkl"
 SCALER_PATH = MODELS_DIR / "scaler.pkl"
