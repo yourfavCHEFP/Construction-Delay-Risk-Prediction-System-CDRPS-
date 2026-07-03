@@ -168,7 +168,15 @@ def load_uploaded_file(file_bytes, file_name, encoding):
 @st.cache_data
 def process_data(df):
     df = df.copy()
-    df = df.apply(pd.to_numeric, errors="ignore")
+
+    # Convert only columns that have at least one numeric-like value.
+    # This avoids pandas-version differences around errors="ignore".
+    for column in df.columns:
+        if pd.api.types.is_numeric_dtype(df[column]):
+            continue
+        converted = pd.to_numeric(df[column], errors="coerce")
+        if converted.notna().any():
+            df[column] = converted
 
     numeric_df = df.select_dtypes(include=["number"])
     if numeric_df.empty:
