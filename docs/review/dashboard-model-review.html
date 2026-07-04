@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Your Code Review &mdash; Dashboard + Model Artifacts (PR #3) | CDRPS</title>
+<style>
+  :root {
+    --bg: #0f141b;
+    --panel: #161d27;
+    --panel-2: #1b2430;
+    --border: #27313f;
+    --text: #e6edf3;
+    --muted: #9aa7b4;
+    --accent: #4f9cf9;
+    --accent-soft: rgba(79, 156, 249, 0.14);
+    --good: #3fb950;
+    --good-soft: rgba(63, 185, 80, 0.14);
+    --crit: #f85149;
+    --crit-soft: rgba(248, 81, 73, 0.14);
+    --high: #f85149;
+    --med: #e3a008;
+    --low: #58a6ff;
+    --nit: #8b949e;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #1a2330 0%, var(--bg) 55%);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  header.page {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 26px 28px;
+    box-shadow: var(--shadow);
+  }
+  header.page h1 { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -0.01em; }
+  header.page .sub { color: var(--muted); margin: 0 0 16px; font-size: 0.98rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge {
+    font-size: 0.78rem; padding: 4px 10px; border-radius: 999px;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .badge code { color: var(--accent); background: none; padding: 0; }
+  .badge strong { color: var(--text); font-weight: 600; }
+
+  .intro {
+    margin-top: 18px; padding: 16px 18px; border-radius: var(--radius);
+    background: var(--accent-soft); border: 1px solid rgba(79,156,249,0.3);
+    font-size: 0.99rem;
+  }
+  .intro b { color: var(--text); }
+
+  .alert {
+    margin-top: 14px; padding: 16px 18px; border-radius: var(--radius);
+    background: var(--crit-soft); border: 1px solid rgba(248,81,73,0.4);
+    font-size: 0.99rem;
+  }
+  .alert b { color: #ffb3ae; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 8px; }
+  .stat {
+    flex: 1 1 150px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+  }
+  .stat .n { font-size: 1.5rem; font-weight: 700; }
+  .stat .l { color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat.good .n { color: var(--good); }
+  .stat.improve .n { color: var(--accent); }
+  .stat.crit .n { color: var(--crit); }
+
+  nav.tabs {
+    display: flex; flex-wrap: wrap; gap: 6px; margin: 26px 0 18px;
+    border-bottom: 1px solid var(--border); padding-bottom: 10px;
+  }
+  .tab-btn {
+    background: var(--panel); color: var(--muted); border: 1px solid var(--border);
+    padding: 9px 16px; border-radius: 999px; cursor: pointer; font-size: 0.9rem;
+    transition: all 0.15s ease;
+  }
+  .tab-btn:hover { color: var(--text); border-color: var(--accent); }
+  .tab-btn.active { background: var(--accent); color: #07101d; border-color: var(--accent); font-weight: 600; }
+  .tab-btn.crit-tab.active { background: var(--crit); border-color: var(--crit); color: #1a0605; }
+  .tab-btn.crit-tab:hover { border-color: var(--crit); }
+
+  .panel-section { display: none; }
+  .panel-section.active { display: block; animation: fade 0.2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .toolbar .spacer { flex: 1; }
+  .link-btn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.85rem; }
+  .link-btn:hover { text-decoration: underline; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
+  }
+  .card.critical { border-color: rgba(248,81,73,0.5); }
+  .card-head {
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer;
+    user-select: none;
+  }
+  .card-head:hover { background: var(--panel-2); }
+  .card-head .title { flex: 1; font-weight: 600; font-size: 1rem; }
+  .card-head .title .id { color: var(--muted); font-weight: 500; margin-right: 8px; font-size: 0.85rem; }
+  .chevron { color: var(--muted); transition: transform 0.18s ease; font-size: 0.8rem; }
+  .card.open .chevron { transform: rotate(90deg); }
+
+  .sev {
+    font-size: 0.72rem; padding: 3px 9px; border-radius: 999px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+  }
+  .sev.good { background: var(--good-soft); color: var(--good); border: 1px solid rgba(63,185,80,0.4); }
+  .sev.crit { background: var(--crit-soft); color: var(--crit); border: 1px solid rgba(248,81,73,0.5); }
+
+  .card-body { display: none; padding: 4px 18px 18px; border-top: 1px solid var(--border); }
+  .card.open .card-body { display: block; }
+  .card-body p { margin: 12px 0; }
+  .card-body .label {
+    display: inline-block; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted); margin-bottom: 2px;
+  }
+  .fix {
+    margin-top: 12px; padding: 12px 14px; border-left: 3px solid var(--good);
+    background: var(--good-soft); border-radius: 0 8px 8px 0;
+  }
+  .fix .label { color: var(--good); }
+  .repro {
+    margin-top: 12px; padding: 12px 14px; border-left: 3px solid var(--crit);
+    background: var(--crit-soft); border-radius: 0 8px 8px 0;
+  }
+  .repro .label { color: var(--crit); }
+
+  code, pre {
+    font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+  }
+  code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; color: #d2a8ff; }
+  pre {
+    background: #0b0f15; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; overflow-x: auto; margin: 10px 0; color: #c9d1d9;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .file { color: var(--accent); }
+
+  footer.page {
+    margin-top: 36px; padding: 22px 24px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted);
+  }
+  footer.page b { color: var(--text); }
+  .section-lead { color: var(--muted); margin: 0 0 18px; }
+  h2.sec { font-size: 1.15rem; margin: 0 0 4px; }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <h1>🏗️ Round two &mdash; explainability, transforms &amp; a gremlin</h1>
+    <div class="badges">
+      <span class="badge"><strong>Reviewed on</strong>&nbsp; <code>main</code> @ <code>0e0a943</code></span>
+      <span class="badge"><strong>Model</strong>&nbsp; RandomForestRegressor &middot; 300 trees</span>
+      <span class="badge"><strong>App</strong>&nbsp; Streamlit dashboard &middot; verified working</span>
+    </div>
+
+    <div class="intro">
+      This is a <b>big step up in ambition</b> — you added real model explainability (SHAP), a skew transform,
+      a confidence score, and a proper metadata artifact for provenance. A lot of this is genuinely well-built:
+      the <span class="file">shap_explain.py</span> refactor is clean, and you finally killed that
+      <code>from turtle import st</code> gremlin. 👏
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat good"><div class="n">6</div><div class="l">Stuff you nailed</div></div>
+    <div class="stat improve"><div class="n">7</div><div class="l">Still to try</div></div>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="strengths">🙌 What you nailed</button>
+    <button class="tab-btn" data-tab="improve">🌱 Still to try</button>
+  </nav>
+
+  <!-- ===================== STRENGTHS ===================== -->
+  <section class="panel-section active" id="strengths">
+    <h2 class="sec">Stuff you nailed 🙌</h2>
+    <p class="section-lead">Real, substantial improvements in this PR — keep doing all of this.</p>
+
+    <div class="toolbar">
+      <div class="spacer"></div>
+      <button class="link-btn" data-expand="strengths">Open all</button>
+      <button class="link-btn" data-collapse="strengths">Close all</button>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S1</span>You killed the <code>turtle</code> gremlin</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>The old <span class="file">shap_explain.py</span> literally had <code>from turtle import st</code> — twice — plus a
+        block of demo code (<code>st.button(...)</code>) that would <em>run on import</em>. That was a lurking bug bomb. You
+        removed all of it and imported the real modules properly. This is exactly the kind of cleanup that quietly saves
+        someone a very confusing afternoon.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S2</span>The SHAP refactor is genuinely clean</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>You broke the explainability logic into small, single-purpose helpers —
+        <code>_normalize_shap_values</code>, <code>top_contributing_features</code>, <code>top_contributors</code> and
+        <code>explanation_text</code>. I especially liked <code>_normalize_shap_values</code>: SHAP hands back a list, an
+        <code>Explanation</code> object, or a raw array depending on the model, and you handle all three in one place. That's
+        thoughtful, defensive code. Only <code>explanation_text</code> carries full type hints so far — annotating the
+        others would be an easy polish.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S3</span>You gave the model a paper trail</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>Adding <span class="file">CDRPS/models/metadata.json</span> — model type, <code>n_estimators</code>, row count,
+        the feature list, metrics, the full skew-transform record, and the weighting strategy — is a pro move. Six months
+        from now, "which model is this and how was it built?" is answerable in one file instead of archaeology.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S4</span>You made the prediction actually explainable</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>A raw "risk = 3.2" isn't much use to a project manager. You added the top-5 contributing factors, a
+        plain-language explanation ("<em>increased the predicted delay risk by…</em>"), and a global importance plot. That's
+        the difference between a number and a decision someone can actually trust and act on. Great instinct for who's on
+        the other side of the screen.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S5</span>Your skew helper is careful</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><code>transform_skewed_features</code> in <span class="file">CDRPS/src/preparation/encoding.py</span> is nicely done:
+        a clear docstring, it returns rich metadata (pre/post skew), and it handles the awkward cases — no numeric
+        columns, nothing over the threshold, missing columns — by returning cleanly instead of blowing up. The
+        <em>function</em> is solid and does exactly what it should.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="sev good">Nice</span>
+        <span class="title"><span class="id">S6</span>You tidied as you went</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p>Small but appreciated: you trimmed the unused typing imports in
+        <span class="file">prediction_pipeline.py</span> down to what's actually used, and you added a
+        <span class="file">model_comparison.ipynb</span> so the choice of model is backed by evidence rather than vibes.
+        Leaving the codebase tidier than you found it is a habit worth keeping.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== IMPROVEMENTS ===================== -->
+  <section class="panel-section" id="improve">
+    <h2 class="sec">Things to try next time 🌱</h2>
+    <p class="section-lead">None of these are urgent — they're "here's how to make it even better." Each card has
+    <em>what</em>, <em>why it matters</em>, and <em>what I'd do</em>.</p>
+
+    <div class="toolbar">
+      <div class="spacer"></div>
+      <button class="link-btn" data-expand="improve">Open all</button>
+      <button class="link-btn" data-collapse="improve">Close all</button>
+    </div>
+
+    <div class="card" data-sev="low">
+      <div class="card-head"><span class="title"><span class="id">I1</span>The confidence score works, but the formula is a bit ad-hoc</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>Confidence is one minus the variance of the trees' predictions:</p>
+        <pre><code>tree_preds = [tree.predict(X_scaled)[0] for tree in model.estimators_]
+confidence = max(0.0, 1.0 - np.var(tree_preds))</code></pre>
+        <p><span class="label">How it behaves</span><br>Across all 143 rows the per-row tree variance ranges
+        <code>0.000–0.172</code> (median 0.032), so the score lands at <b>0.83–1.00</b> (median 0.97) and reads high and
+        stable. In practice it's fine — the trees agree to within ~0.18 risk points — so this isn't a bug, just a fragile
+        formula.</p>
+        <div class="repro"><span class="label">Measured (saved artifacts, 143 rows)</span>
+        <pre><code>tree-pred variance  min/med/max: 0.000 / 0.032 / 0.172
+confidence          min/med/max: 0.828 / 0.968 / 1.000
+rows with variance &gt; 1         : 0 / 143  (0%)</code></pre></div>
+        <p><span class="label">Why it matters</span><br><code>1 - variance</code> is dimensionally odd and unbounded below:
+        it stays near 1 here only because the trees agree tightly. For a noisier model or far-out-of-range inputs the
+        variance could exceed 1, <code>1 - variance</code> would go negative, and your <code>max(0.0, …)</code> would clamp
+        it to a misleading <b>0.00</b>. It's leaning on the data staying well-behaved.</p>
+        <div class="fix"><span class="label">Suggestion (low priority)</span><br>
+          For a score that's principled regardless of the target's range, map the tree-prediction spread with something
+          bounded like <code>1 / (1 + std)</code>, or just surface the spread directly ("±0.18 risk points").</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="medium">
+      <div class="card-head"><span class="title"><span class="id">I2</span>There's a dead <code>predict_proba</code> path</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br><code>prediction_confidence_score</code> falls back to
+        <code>model.predict_proba(...)</code> when the model has no <code>estimators_</code>.</p>
+        <p><span class="label">Why it matters</span><br>A <code>RandomForestRegressor</code> doesn't have
+        <code>predict_proba</code> at all (that's a classifier method), and it always <em>does</em> have
+        <code>estimators_</code> — so this branch is never reached, and if it ever were, it would crash. It reads as if the
+        app supports classification confidence, which it doesn't. Dead code like this quietly misleads the next reader.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Drop <code>prediction_confidence_score</code> (or gate it behind an explicit
+          <code>is_classifier(model)</code> check) so the code says exactly what it does.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="medium">
+      <div class="card-head"><span class="title"><span class="id">I3</span>You rebuild the global SHAP plot on every click</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>Inside the <code>Predict</code> handler in <span class="file">app.py</span>
+        you build a fresh explainer and recompute SHAP over up to 200 rows every single time:</p>
+        <pre><code>explainer = shap.TreeExplainer(model)
+shap_vals_bg = explainer.shap_values(background_df)   # runs on every button press</code></pre>
+        <p><span class="label">Why it matters</span><br>SHAP over 200 rows of a 300-tree forest isn't free — the app will
+        feel sluggish, and you're recomputing the same global picture that doesn't change between clicks. You even already
+        have an explainer built over in <span class="file">shap_explain.py</span>, so this is duplicated work.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Wrap the global-importance computation in <code>@st.cache_data</code> (or <code>@st.cache_resource</code> for the
+          explainer) so it's computed once and reused. Reuse the module-level explainer instead of making a new one.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="medium">
+      <div class="card-head"><span class="title"><span class="id">I4</span>That R² of 0.94 is flattering you</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>The metrics panel compares the model's predictions against the
+        uploaded <code>Delay_Risk_Index</code> column.</p>
+        <p><span class="label">Why it matters</span><br>Remember how <code>Delay_Risk_Index</code> is built — it's literally the
+        <em>mean of the same feature columns</em> the model is trained on (<code>df[feature_cols].mean(axis=1)</code>). So you're
+        asking the model to predict a number that's a simple function of its own inputs, and then celebrating that it can.
+        That's why R² is ~0.94; it's closer to a self-consistency check than a real accuracy measure. A stakeholder reading
+        "94% accurate" would over-trust it.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Either evaluate against a genuinely held-out target (a real outcome, not one derived from the features), or label
+          the panel honestly — e.g. "in-sample fit to the derived index" — so nobody mistakes it for out-of-sample accuracy.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="low">
+      <div class="card-head"><span class="title"><span class="id">I5</span>You explain the top factors twice</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br>In the prediction page you loop over <code>top5</code> and print each
+        SHAP impact by hand, <em>and</em> you call <code>explanation_text(...)</code>, which formats the same rows again.</p>
+        <p><span class="label">Why it matters</span><br>Two bits of code producing almost the same output will drift — you'll
+        tweak the wording in one and forget the other, and the user sees two slightly different versions of the same list.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Pick one. Since you built the nice reusable <code>explanation_text</code> helper, lean on it and delete the manual
+          loop (or vice-versa) so there's a single source of truth for how contributions are phrased.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="medium">
+      <div class="card-head"><span class="title"><span class="id">I7</span>The sample weighting you recorded is a no-op</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br><span class="file">metadata.json</span> advertises a
+        <code>"quantile-bin inverse-frequency sample_weight"</code> strategy, but the recorded <code>bin_weights</code> are
+        all <code>1.0</code>:</p>
+        <pre><code>"weighting": {
+  "strategy": "quantile-bin inverse-frequency sample_weight",
+  "bin_weights": { "1": 1.0, "0": 1.0, "2": 1.0 }
+}</code></pre>
+        <p><span class="label">Why it matters</span><br>Uniform weights mean the imbalance handling the metadata claims to
+        apply did <b>nothing</b> during training — every row counted equally. The provenance file (rightly praised in S3)
+        reads as if class imbalance was addressed when, as recorded, it wasn't.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Either recompute genuine inverse-frequency weights (they should differ across bins), or drop the weighting claim
+          from the metadata so it doesn't overstate what training did. Worth a look at the cell that produced these.</div>
+      </div>
+    </div>
+
+    <div class="card" data-sev="low">
+      <div class="card-head"><span class="title"><span class="id">I8</span><code>Respondent Number</code> is being used as a feature</span><span class="chevron">▶</span></div>
+      <div class="card-body">
+        <p><span class="label">What you did</span><br><code>Respondent Number</code> — a row ID — is one of the model's 51
+        <code>feature_columns</code>, and it's also folded into the <code>Delay_Risk_Index</code> target via
+        <code>df[feature_cols].mean(axis=1)</code>.</p>
+        <p><span class="label">Why it matters</span><br>An identifier carries no delay signal, so as a feature it's noise the
+        forest can overfit to, and including it in the target mean slightly distorts the very number you're predicting. It
+        also compounds I4 — the target is derived from the features, ID included.</p>
+        <div class="fix"><span class="label">Suggestion</span><br>
+          Drop <code>Respondent Number</code> from both the feature set and the risk-index computation, then retrain. It
+          should have near-zero legitimate importance anyway.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page">
+    <p>Bottom line: <b>this is genuinely strong, ambitious work</b> on current <code>main</code> — the SHAP explainability
+    and the metadata artifact make the model trustworthy, and the prediction flow runs end-to-end. What's left is all
+    polish: highest-value are <b>I3</b> (rebuilding the global SHAP plot on every click), <b>I2</b> (the dead
+    <code>predict_proba</code> path) and <b>I7</b> (the no-op weighting), then <b>I4/I5/I8</b>.
+    Adding one end-to-end predict test would keep the prediction path from regressing. 🙌</p>
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    // ---- Tab switching ----
+    var tabBtns = document.querySelectorAll(".tab-btn");
+    var sections = document.querySelectorAll(".panel-section");
+    tabBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var target = btn.getAttribute("data-tab");
+        tabBtns.forEach(function (b) { b.classList.toggle("active", b === btn); });
+        sections.forEach(function (s) { s.classList.toggle("active", s.id === target); });
+      });
+    });
+
+    // ---- Collapse / expand individual cards ----
+    document.querySelectorAll(".card-head").forEach(function (head) {
+      head.addEventListener("click", function () {
+        head.parentElement.classList.toggle("open");
+      });
+    });
+
+    // ---- Open all / close all (scoped to a section) ----
+    document.querySelectorAll("[data-expand]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var sec = document.getElementById(btn.getAttribute("data-expand"));
+        sec.querySelectorAll(".card").forEach(function (c) {
+          if (c.style.display !== "none") c.classList.add("open");
+        });
+      });
+    });
+    document.querySelectorAll("[data-collapse]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var sec = document.getElementById(btn.getAttribute("data-collapse"));
+        sec.querySelectorAll(".card").forEach(function (c) { c.classList.remove("open"); });
+      });
+    });
+  })();
+</script>
+</body>
+</html>
