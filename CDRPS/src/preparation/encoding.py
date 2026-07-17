@@ -34,7 +34,10 @@ def encode_categorical(
     for col in categorical_columns:
         if col in df.columns:
             le = LabelEncoder()
-            df[col] = le.fit_transform(df[col].astype(str))
+            df[col] = pd.Series(
+                le.fit_transform(df[col].astype(str)),
+                index=df.index
+            )
             encoders[col] = le
 
     return df, encoders
@@ -54,8 +57,15 @@ def scale_numerical(
     df = df.copy()
     scaler = StandardScaler()
 
-    # Fit only on numeric columns
-    df[numeric_columns] = scaler.fit_transform(df[numeric_columns])
+    available_numeric_cols = [
+        col for col in numeric_columns
+        if col in df.columns
+    ]
+
+    if available_numeric_cols:
+        df[available_numeric_cols] = scaler.fit_transform(
+            df[available_numeric_cols]
+        )
 
     return df, scaler
 
@@ -107,3 +117,4 @@ def transform_skewed_features(
     }
 
     return df, transformer, metadata
+

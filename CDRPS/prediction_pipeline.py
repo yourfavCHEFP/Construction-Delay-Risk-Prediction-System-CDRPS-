@@ -5,6 +5,7 @@ from typing import Dict
 import joblib
 import pandas as pd
 import numpy as np
+from typing import Any, Dict, List, Optional, Tuple
 
 BASE_DIR = Path(__file__).resolve().parent
 MODELS_DIR = BASE_DIR / "models"
@@ -153,10 +154,9 @@ def get_tenant_prediction_plan() -> Dict[str, bool]:
     }
 
 
-def bind_tenant_context(input_dict: Dict[str, float], tenant_id: str | None = None) -> Dict[str, float]:
-    """Placeholder for tenant-aware request binding."""
+def bind_tenant_context(input_dict: Dict[str, float], tenant_id: str | None = None) -> Dict[str, Any]: #Placeholder for tenant-aware request binding."""
 
-    payload = dict(input_dict)
+    payload: Dict[str, Any] = dict(input_dict)
     if tenant_id is not None:
         payload["tenant_id"] = tenant_id
     return payload
