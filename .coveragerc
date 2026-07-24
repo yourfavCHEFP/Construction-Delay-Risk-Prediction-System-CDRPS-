@@ -6,9 +6,9 @@ omit =
     CDRPS/export_pipeline.py
     CDRPS/metadata_pipeline.py
     CDRPS/shap_pipeline.py
-    CDRPS\model_training\compare_models.py
-    CDRPS\model_training\evaluation.py
-    CDRPS\model_training\metadata_generation.py
-    CDRPS\model_training\preprocessing.py
-    CDRPS\model_training\shap_recalibration.py
-    CDRPS\model_training\training.py
+    CDRPS/model_training/compare_models.py
+    CDRPS/model_training/evaluation.py
+    CDRPS/model_training/metadata_generation.py
+    CDRPS/model_training/preprocessing.py
+    CDRPS/model_training/shap_recalibration.py
+    CDRPS/model_training/training.py
