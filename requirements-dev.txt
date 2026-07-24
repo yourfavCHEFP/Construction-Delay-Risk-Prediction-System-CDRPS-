@@ -1,2 +1,6 @@
+<<<<<<< HEAD
 pytest 
+=======
+pytest
+>>>>>>> main
 pytest-cov
